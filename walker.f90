@@ -10,44 +10,38 @@ program walker
   implicit none
 
   !! Declarations
-  integer :: ii, jj, kk, ll, Time, nwalks, n1, n2, n3
-  integer, allocatable :: pos(:,:), counter(:)
-  real(dp) :: rand, temp, total
-  real(dp), allocatable :: network(:,:,:), current(:,:,:)
-  character(*), parameter :: data = "network.inp"
-
+  integer :: ii, maxTimestep, n1, nWalker, start
+  real(dp) :: timestep
+  real(dp), allocatable :: vortex(:)
+  real(dp), allocatable :: laplacian(:,:)
+  character(*), parameter :: file = "laplacian.inp"
+  character(10) :: mode
+  
   call init_random_seed()
-  nwalks = 20
-  Time = 5
-  allocate(pos(Time,nwalks))
-  pos = 1
+  call read_config("walk.cfg", nWalker, maxTimestep, mode, start, timestep)
   
-  call read_array(data, n1, n2, n3, network)
-  allocate(counter(n1))
-  counter = 0
-  allocate(current(n1,n2,n3))
-  
-  call normal(network)
-
-  call gen_rWalk(network,pos,Time,nwalks,counter)
-  
-  !! Calculation of the Potential
-  counter = counter/nwalks
-  do ii = 1, n1
-     counter(ii) = counter(ii)/sum(network(ii,:,:))
-  end do
-
-  !! Calculation of the current
-  do ii = 1, n1
-     do jj = 1, n2
-        do kk = 1, n3
-           current(ii,jj,kk) = (counter(ii) - counter(jj))*network(ii,jj,kk)
-        end do
+  select case (mode)
+  case default !! Unknown Mode. End program.
+    write(*,*) "Error: Not known modus! Stop program."
+    stop
+  case ("CRW") !! Classical Random Walk mode
+     
+     call read_matrix_real(file, laplacian)
+     n1 = size(laplacian, dim=1)
+     allocate(vortex(n1))
+     vortex = 0
+     vortex(start) = 1
+     laplacian = -laplacian * timestep
+     do ii = 1, n1
+      laplacian(ii,ii) = laplacian(ii,ii) + 1
      end do
-  end do
-  
-  call write_matrix("matrix.dat", pos)
-  call write_array("current.dat", current)
-  
-end program walker
+     call CRWalk(laplacian,vortex,maxTimestep) 
+     call write_x("vortex.dat", vortex)
+
+  case ("QW") !! Quantum Walk
+    write(*,*) "Sorry. Not yet implemented. Stop program."
+    stop
+  end select
+
+end program
 

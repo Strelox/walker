@@ -1,3 +1,5 @@
+!> Provides network related routines
+!!
 module networks
   use accuracy
   use io
@@ -6,7 +8,7 @@ module networks
 
 contains
 
-  !! Normalization
+  !! Normalization (???)
   subroutine normal(network)
     real(dp), intent(inout) :: network(:,:,:)
     integer :: ii, jj, kk, n1, n2, n3
