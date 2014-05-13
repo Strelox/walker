@@ -6,47 +6,7 @@ module io
 
 contains
 
-  !> Reads Configuration of the random Walk
-  subroutine read_config(data, nWalker, maxTimestep, mode, start, timestep)
-    character(*), intent(in) :: data
-    integer, intent(out) :: nWalker, maxTimestep, start
-    real(dp), intent(out) :: timestep
-    character(*), intent(out) :: mode
-    integer :: status
-
-    open(14, file=data, status="old", form="formatted", action="read")
-    read(14,*, iostat=status) nWalker
-    if (status /= 0) then
-       write(*,*) "Error: Wrong number of walker format in config file! End program."
-       stop
-    end if
-
-    read(14,*, iostat=status) maxTimestep
-    if (status /= 0) then
-       write(*,*) "Error: Wrong maxTimestep steps format in config file! End program."
-       stop
-    end if
-
-    read(14,*, iostat=status) mode
-    if (status /= 0) then
-       write(*,*) "Error: Wrong mode format in config file! End program."
-       stop
-    end if
-
-    read(14,*, iostat=status) start
-    if (status /= 0) then
-       write(*,*) "Error: Wrong start format in config file! End program."
-       stop
-    end if
-    
-    read(14,*, iostat=status) timestep
-    if (status /= 0) then
-       write(*,*) "Error: Wrong timestep format in config file! End program."
-       stop
-    end if
-    
-    close(14)
-  end subroutine read_config
+!-------------------Input---------------------------------------------------
 
   !> Reads a (integer) matrix from a file
   !!
@@ -172,9 +132,105 @@ contains
     close(11)
   end subroutine read_array
   
+!---------------------------Output------------------------------
+
+  !> Writes a (integer) matrix into a file
+  !!
+  subroutine write_matrix_int(data, array, lineNr, size_out)
+
+    integer :: ii, jj, nn, mm
+    character(*), intent(in) :: data
+    real(dp), intent(in) :: array(:,:) 
+    logical, optional, intent(in) :: lineNr, size_out
+
+    nn = size(array(:,1))
+    mm = size(array(1,:))
+
+    open(12, file=data, status="replace", form="formatted", action="write")
+    
+    if (present(size_out) .eqv. .true.) then
+      write(12, *) nn, mm
+    end if
+    
+    if (present(lineNr) .eqv. .true.) then  
+      do ii = 1, nn
+      write(12, *) ii, (array(ii,jj), jj=1, mm)
+      end do
+    else 
+      do ii = 1, nn
+      write(12, *) (array(ii,jj), jj=1, mm)
+      end do
+    end if
+    
+    close(12)
+  end subroutine write_matrix_int
+
   !> Writes a (real) matrix into a file
   !!
-  subroutine write_matrix_int(data, array)
+  subroutine write_matrix_real(data, array, lineNr, size_out)
+
+    integer :: ii, jj, nn, mm
+    character(*), intent(in) :: data
+    real(dp), intent(in) :: array(:,:) 
+    logical, optional, intent(in) :: lineNr, size_out
+
+    nn = size(array(:,1))
+    mm = size(array(1,:))
+    
+    open(12, file=data, status="replace", form="formatted", action="write")
+    
+    if (present(size_out) .eqv. .true.) then
+      write(12, *) nn, mm
+    end if
+    
+    if (present(lineNr) .eqv. .true.) then  
+      do ii = 1, nn
+      write(12, *) ii, (array(ii,jj), jj=1, mm)
+      end do
+    else 
+      do ii = 1, nn
+      write(12, *) (array(ii,jj), jj=1, mm)
+      end do
+    end if
+    
+    close(12)
+  end subroutine write_matrix_real
+
+
+  !> Writes a (complex) matrix into a file
+  !!
+  subroutine write_matrix_complex(data, array, lineNr, size_out)
+
+    integer :: ii, jj, nn, mm
+    character(*), intent(in) :: data
+    real(dp), intent(in) :: array(:,:) 
+    logical, optional, intent(in) :: lineNr, size_out
+
+    nn = size(array(:,1))
+    mm = size(array(1,:))
+
+    open(12, file=data, status="replace", form="formatted", action="write")
+    
+    if (present(size_out) .eqv. .true.) then
+      write(12, *) nn, mm
+    end if
+    
+    if (present(lineNr) .eqv. .true.) then  
+      do ii = 1, nn
+      write(12, *) ii, (array(ii,jj), jj=1, mm)
+      end do
+    else 
+      do ii = 1, nn
+      write(12, *) (array(ii,jj), jj=1, mm)
+      end do
+    end if
+
+    close(12)
+  end subroutine write_matrix_complex
+  
+  !> Writes a (integer) matrix with line numbers into a file
+  !!
+  subroutine write_nmatrix_int(data, array)
 
     integer :: ii, jj, nn, mm
     character(*), intent(in) :: data
@@ -189,11 +245,11 @@ contains
     end do
 
     close(12)
-  end subroutine write_matrix_int
+  end subroutine write_nmatrix_int
 
-  !> Writes a (real) matrix into a file
+  !> Writes a (real) matrix with line numbers into a file
   !!
-  subroutine write_matrix_real(data, array)
+  subroutine write_nmatrix_real(data, array)
 
     integer :: ii, jj, nn, mm
     character(*), intent(in) :: data
@@ -208,12 +264,12 @@ contains
     end do
 
     close(12)
-  end subroutine write_matrix_real
+  end subroutine write_nmatrix_real
 
 
-  !> Writes a (real) matrix into a file
+  !> Writes a (complex) matrix with line numbers into a file
   !!
-  subroutine write_matrix_complex(data, array)
+  subroutine write_nmatrix_complex(data, array)
 
     integer :: ii, jj, nn, mm
     character(*), intent(in) :: data
@@ -228,11 +284,34 @@ contains
     end do
 
     close(12)
-  end subroutine write_matrix_complex
+  end subroutine write_nmatrix_complex
   
-  !> Writes an array into a file
+  !> Writes an (real) array into a file
   !!
-  subroutine write_array(data, array)
+  subroutine write_array_real(data, array)
+
+    integer :: ii, jj, kk, n1, n2, n3
+    character(*), intent(in) :: data
+    real(dp), intent(in) :: array(:,:,:)
+
+    n1 = size(array, DIM = 1)
+    n2 = size(array, DIM = 2)
+    n3 = size(array, DIM = 3)
+
+    open(13, file=data, status="replace", form="formatted", action="write")
+    do kk = 1, n3
+       do ii = 1, n1
+          write(13, *) (array(ii,jj,kk), jj=1, n2)
+       end do
+       write(13, *)
+    end do
+
+    close(13)
+  end subroutine write_array_real
+  
+  !> Writes an (real) array with line numbers into a file
+  !!
+  subroutine write_narray_real(data, array)
 
     integer :: ii, jj, kk, n1, n2, n3
     character(*), intent(in) :: data
@@ -251,7 +330,7 @@ contains
     end do
 
     close(13)
-  end subroutine write_array
+  end subroutine write_narray_real
 
 
 
@@ -267,7 +346,7 @@ contains
 
     open(12, file=data, status="replace", form="formatted", action="write")
     do ii = 1, size(vec)
-       write(12, "(ES20.12)") vec(ii)
+       write(12, "(ES12.6)") vec(ii)
     end do
     close(12)
   end subroutine write_x

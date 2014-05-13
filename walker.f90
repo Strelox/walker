@@ -4,6 +4,7 @@
 program walker
   use accuracy
   use io
+  use config
   use random
   use networks
   use randomWalk
