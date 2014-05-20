@@ -173,6 +173,7 @@ contains
     character(*), intent(in) :: data
     real(dp), intent(in) :: array(:,:) 
     logical, optional, intent(in) :: lineNr, size_out
+    character(30) :: form
 
     nn = size(array(:,1))
     mm = size(array(1,:))
@@ -182,14 +183,16 @@ contains
     if (present(size_out) .eqv. .true.) then
       write(12, *) nn, mm
     end if
-    
-    if (present(lineNr) .eqv. .true.) then  
+
+    if ((present(lineNr) .eqv. .true. ) .and. ( lineNr .eqv. .true.)) then
+      write(form, "(A1, I0, A)") "(I,", (nn), "(ES15.6, 2X))"
       do ii = 1, nn
-      write(12, *) ii, (array(ii,jj), jj=1, mm)
+      write(12, form) ii, (array(ii,jj), jj=1, mm)
       end do
     else 
+      write(form, "(A1, I0, A)") "(", (nn), "(ES15.6, 2X))"
       do ii = 1, nn
-      write(12, *) (array(ii,jj), jj=1, mm)
+      write(12, form) (array(ii,jj), jj=1, mm)
       end do
     end if
     
@@ -228,64 +231,6 @@ contains
     close(12)
   end subroutine write_matrix_complex
   
-  !> Writes a (integer) matrix with line numbers into a file
-  !!
-  subroutine write_nmatrix_int(data, array)
-
-    integer :: ii, jj, nn, mm
-    character(*), intent(in) :: data
-    integer, intent(in) :: array(:,:)
-
-    nn = size(array(:,1))
-    mm = size(array(1,:))
-
-    open(12, file=data, status="replace", form="formatted", action="write")
-    do ii = 1, nn
-       write(12, *) ii, (array(ii,jj), jj=1, mm)
-    end do
-
-    close(12)
-  end subroutine write_nmatrix_int
-
-  !> Writes a (real) matrix with line numbers into a file
-  !!
-  subroutine write_nmatrix_real(data, array)
-
-    integer :: ii, jj, nn, mm
-    character(*), intent(in) :: data
-    real(dp), intent(in) :: array(:,:)
-
-    nn = size(array(:,1))
-    mm = size(array(1,:))
-
-    open(12, file=data, status="replace", form="formatted", action="write")
-    do ii = 1, nn
-       write(12, *) ii, (array(ii,jj), jj=1, mm)
-    end do
-
-    close(12)
-  end subroutine write_nmatrix_real
-
-
-  !> Writes a (complex) matrix with line numbers into a file
-  !!
-  subroutine write_nmatrix_complex(data, array)
-
-    integer :: ii, jj, nn, mm
-    character(*), intent(in) :: data
-    complex(dp), intent(in) :: array(:,:)
-
-    nn = size(array(:,1))
-    mm = size(array(1,:))
-
-    open(12, file=data, status="replace", form="formatted", action="write")
-    do ii = 1, nn
-       write(12, *) ii, (array(ii,jj), jj=1, mm)
-    end do
-
-    close(12)
-  end subroutine write_nmatrix_complex
-  
   !> Writes an (real) array into a file
   !!
   subroutine write_array_real(data, array)
@@ -308,31 +253,6 @@ contains
 
     close(13)
   end subroutine write_array_real
-  
-  !> Writes an (real) array with line numbers into a file
-  !!
-  subroutine write_narray_real(data, array)
-
-    integer :: ii, jj, kk, n1, n2, n3
-    character(*), intent(in) :: data
-    real(dp), intent(in) :: array(:,:,:)
-
-    n1 = size(array, DIM = 1)
-    n2 = size(array, DIM = 2)
-    n3 = size(array, DIM = 3)
-
-    open(13, file=data, status="replace", form="formatted", action="write")
-    do kk = 1, n3
-       do ii = 1, n1
-          write(13, *) ii, (array(ii,jj,kk), jj=1, n2)
-       end do
-       write(13, *)
-    end do
-
-    close(13)
-  end subroutine write_narray_real
-
-
 
   !> Writing data by the line
   !!
@@ -346,7 +266,7 @@ contains
 
     open(12, file=data, status="replace", form="formatted", action="write")
     do ii = 1, size(vec)
-       write(12, "(ES12.6)") vec(ii)
+       write(12, "(ES15.6)") vec(ii)
     end do
     close(12)
   end subroutine write_x
