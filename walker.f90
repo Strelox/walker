@@ -16,14 +16,14 @@ program walker
   !! Declarations
   integer :: ii, jj, maxTimestep, n1, nWalker, start
   integer, allocatable :: distance(:)
-  real(dp) :: timestep
+  real(dp) :: timestep, prob_in
   real(dp), allocatable :: vortex(:), prob_distance(:)
   real(dp), allocatable :: laplacian(:,:)
   character(*), parameter :: file = "laplacian.inp"
   character(10) :: walk_mode, time_mode
 
   call init_random_seed()
-  call read_config("walk.cfg", nWalker, maxTimestep, walk_mode, time_mode, start, timestep)
+  call read_config("walk.cfg", nWalker, maxTimestep, walk_mode, time_mode, start, prob_in, timestep)
 
   select case (walk_mode)
   case default !! Unknown Mode. End program.
@@ -47,7 +47,7 @@ program walker
     call write_x_int("distance.dat", distance)
 
     !! do classical random walk
-    call CRWalk(laplacian, vortex, timestep, maxTimestep, time_mode)
+    call CRWalk(laplacian, vortex, start, timestep, maxTimestep, time_mode, prob_in)
     call write_x("vortex.dat", vortex)
     
     !! calculate probability dependent on distance from start

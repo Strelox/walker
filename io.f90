@@ -85,7 +85,7 @@ contains
        stop
     end if
 
-    !! Reads matrix
+    !! Reads matrix50
     allocate(array(n1,n2))
     do ii = 1, n1
        read(11,*, iostat=status) (array(ii,jj), jj=1,n2)
@@ -226,7 +226,7 @@ contains
       do ii = 1, nn
       write(12, *) (array(ii,jj), jj=1, mm)
       end do
-    end if
+     end if
 
     close(12)
   end subroutine write_matrix_complex

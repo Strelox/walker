@@ -16,10 +16,10 @@ contains
   !! \param start       Vortex where the walk will start.
   !! \param timestep    The size of a timestep.
   !!
-  subroutine read_config(data, nWalker, maxTimestep, walk_mode, time_mode, start, timestep)
+  subroutine read_config(data, nWalker, maxTimestep, walk_mode, time_mode, start, prob_int, timestep)
     character(*), intent(in) :: data
     integer, intent(out) :: nWalker, maxTimestep, start
-    real(dp), intent(out) :: timestep
+    real(dp), intent(out) :: timestep, prob_int
     character(*), intent(out) :: walk_mode, time_mode
     integer :: status
 
@@ -58,7 +58,13 @@ contains
        write(*,*) "Error: Start vortex is negative or zero. End program."
        stop
     end if
-
+    
+    read(14,*, iostat=status) prob_int
+    if (status /= 0) then
+       write(*,*) "Error: Wrong number of input probability in config file! End program."
+       stop
+    end if
+    
     read(14,*, iostat=status) timestep
     if (status /= 0) then
        write(*,*) "Error: Wrong timestep format in config file! End program."

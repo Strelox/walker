@@ -15,15 +15,17 @@ contains
   !!
   !! \param laplacian   Laplacian matrix containing information about the network.
   !! \param vortex      Vector to contain the probability to be in each vortex.
+  !! \param start	Start vortex
   !! \param timestep    The size of a timestep.
   !! \param maxTimestep The maximum amount of timesteps that will be simulated.
   !! \param time_mode   The time mode of the simulation (either discrete or continous).
   !!
-  subroutine CRWalk(laplacian, vortex, timestep, maxTimestep, time_mode)
+  subroutine CRWalk(laplacian, vortex, start, timestep, maxTimestep, time_mode, input)
 
     integer :: ii, n1
-    integer, intent(in) :: maxTimestep
-    real(dp), intent(in) :: timestep
+    real(dp), allocatable :: rate(:)
+    integer, intent(in) :: maxTimestep, start
+    real(dp), intent(in) :: timestep, input
     character(*), intent(in) :: time_mode
     real(dp), intent(inout) :: laplacian(:,:)
     real(dp), intent(inout) :: vortex(:)
@@ -35,24 +37,27 @@ contains
         stop
         
       case ("discrete") !! discrete-time Random Walk mode
+        !! Transform laplacian in transition matrix
         laplacian = laplacian * timestep
         do ii = 1, n1
           laplacian(ii,ii) = laplacian(ii,ii) + 1
         end do
-        
+        laplacian(start, start) = laplacian(start, start) + input*timestep
         do ii = 1, maxTimestep
-        vortex = matmul(laplacian,vortex)
+          vortex = matmul(laplacian,vortex)
         end do
-      
+        
       case ("continous") !! continous-time Random Walk mode
-      vortex = matmul(laplacian,vortex)
-    
+      allocate(rate(n1))
+      do ii = 1, maxTimestep
+        rate = matmul(laplacian,vortex)
+        rate(start) = rate(start) + input
+        vortex = vortex + rate*timestep
+      end do
     end select
      
      
-    do ii = 1, maxTimestep
-      vortex = matmul(laplacian,vortex)
-    end do
+    
 
   end subroutine CRWalk
 
