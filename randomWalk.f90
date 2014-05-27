@@ -15,20 +15,23 @@ contains
   !!
   !! \param laplacian   Laplacian matrix containing information about the network.
   !! \param vortex      Vector to contain the probability to be in each vortex.
-  !! \param start	Start vortex
+  !! \param io_vertices Input/Output vertices 
+  !! \param io_rates    Input/Output rates
   !! \param timestep    The size of a timestep.
   !! \param maxTimestep The maximum amount of timesteps that will be simulated.
   !! \param time_mode   The time mode of the simulation (either discrete or continous).
   !!
-  subroutine CRWalk(laplacian, vortex, start, timestep, maxTimestep, time_mode, input)
+  subroutine CRWalk(laplacian, vortex, io_vertices, io_rates, timestep, maxTimestep, time_mode)
 
-    integer :: ii, n1
-    real(dp), allocatable :: rate(:)
-    integer, intent(in) :: maxTimestep, start
-    real(dp), intent(in) :: timestep, input
+    !! Declarations
+    integer, intent(in) :: maxTimestep, io_vertices(:)
+    real(dp), intent(in) :: timestep, io_rates(:)
     character(*), intent(in) :: time_mode
     real(dp), intent(inout) :: laplacian(:,:)
     real(dp), intent(inout) :: vortex(:)
+    
+    integer :: ii, jj, n1
+    real(dp), allocatable :: rate(:)
     
     n1 = size(laplacian, dim=1)
     select case (time_mode)
@@ -42,7 +45,11 @@ contains
         do ii = 1, n1
           laplacian(ii,ii) = laplacian(ii,ii) + 1
         end do
-        laplacian(start, start) = laplacian(start, start) + input*timestep
+        !! Add Input/Output rates
+        do ii = 1, size(io_vertices)
+          laplacian(io_vertices(ii), io_vertices(ii)) = laplacian(io_vertices(ii), io_vertices(ii)) + io_rates(ii)*timestep
+        end do
+        !! Lets walk
         do ii = 1, maxTimestep
           vortex = matmul(laplacian,vortex)
         end do
@@ -51,7 +58,9 @@ contains
       allocate(rate(n1))
       do ii = 1, maxTimestep
         rate = matmul(laplacian,vortex)
-        rate(start) = rate(start) + input
+        do jj = 1, size(io_vertices)
+          rate(io_vertices(ii)) = rate(io_vertices(ii)) + io_rates(ii)
+        end do
         vortex = vortex + rate*timestep
       end do
     end select
