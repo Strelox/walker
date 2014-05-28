@@ -1,7 +1,10 @@
-! Source: http://fortranwiki.org/fortran/show/random_seed (4th February, 2014)
+!> Containts random generator related routines.
+!! Source: http://fortranwiki.org/fortran/show/random_seed (4th February, 2014)
 module random
 
 contains
+  !> Initialize a random seed
+  !! \details Connects random seed with system clock
   subroutine init_random_seed()
   integer :: i, n, clock
   integer, dimension(:), allocatable :: seed
@@ -18,5 +21,3 @@ contains
 end subroutine
 
 end module random
-
-

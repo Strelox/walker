@@ -140,6 +140,7 @@ contains
 
     integer :: ii, jj, nn, mm
     character(*), intent(in) :: data
+    character(30) :: form
     real(dp), intent(in) :: array(:,:) 
     logical, optional, intent(in) :: lineNr, size_out
 
@@ -148,15 +149,17 @@ contains
 
     open(12, file=data, status="replace", form="formatted", action="write")
     
-    if (present(size_out) .eqv. .true.) then
-      write(12, *) nn, mm
+    if ((present(size_out) .eqv. .true.) .and. (size_out .eqv. .true. )) then
+      write(12, "(2(I0))") nn, mm
     end if
     
-    if (present(lineNr) .eqv. .true.) then  
+    if ((present(lineNr) .eqv. .true. ) .and. ( lineNr .eqv. .true.)) then
+      write(form, "(A3, I0, A)") "(I,", (nn), "(I15, 2X))"
       do ii = 1, nn
-      write(12, *) ii, (array(ii,jj), jj=1, mm)
+      write(12, form) ii, (array(ii,jj), jj=1, mm)
       end do
-    else 
+    else
+      write(form, "(A1, I0, A)") "(", (nn), "(I15, 2X))"
       do ii = 1, nn
       write(12, *) (array(ii,jj), jj=1, mm)
       end do
@@ -175,22 +178,22 @@ contains
     logical, optional, intent(in) :: lineNr, size_out
     character(30) :: form
 
-    nn = size(array(:,1))
-    mm = size(array(1,:))
+    nn = size(array, dim=1)
+    mm = size(array, dim=2)
     
     open(12, file=data, status="replace", form="formatted", action="write")
     
-    if (present(size_out) .eqv. .true.) then
+    if ((present(size_out) .eqv. .true.) .and. (size_out .eqv. .true. ))then
       write(12, *) nn, mm
     end if
 
     if ((present(lineNr) .eqv. .true. ) .and. ( lineNr .eqv. .true.)) then
-      write(form, "(A1, I0, A)") "(I,", (nn), "(ES15.6, 2X))"
+      write(form, "(A3, I0, A)") "(I,", (nn), "(ES15.6, 2X))"
       do ii = 1, nn
       write(12, form) ii, (array(ii,jj), jj=1, mm)
       end do
     else 
-      write(form, "(A1, I0, A)") "(", (nn), "(ES15.6, 2X))"
+      write(form, "(A1, I0, A)") "(", (mm), "(ES15.6, 2X))"
       do ii = 1, nn
       write(12, form) (array(ii,jj), jj=1, mm)
       end do
@@ -199,38 +202,6 @@ contains
     close(12)
   end subroutine write_matrix_real
 
-
-  !> Writes a (complex) matrix into a file
-  !!
-  subroutine write_matrix_complex(data, array, lineNr, size_out)
-
-    integer :: ii, jj, nn, mm
-    character(*), intent(in) :: data
-    real(dp), intent(in) :: array(:,:) 
-    logical, optional, intent(in) :: lineNr, size_out
-
-    nn = size(array(:,1))
-    mm = size(array(1,:))
-
-    open(12, file=data, status="replace", form="formatted", action="write")
-    
-    if (present(size_out) .eqv. .true.) then
-      write(12, *) nn, mm
-    end if
-    
-    if (present(lineNr) .eqv. .true.) then  
-      do ii = 1, nn
-      write(12, *) ii, (array(ii,jj), jj=1, mm)
-      end do
-    else 
-      do ii = 1, nn
-      write(12, *) (array(ii,jj), jj=1, mm)
-      end do
-     end if
-
-    close(12)
-  end subroutine write_matrix_complex
-  
   !> Writes an (real) array into a file
   !!
   subroutine write_array_real(data, array)
@@ -328,6 +299,3 @@ contains
   end subroutine write_nxy
 
 end module io
-
-
-

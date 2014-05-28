@@ -28,17 +28,17 @@ contains
     real(dp), intent(in) :: timestep, io_rates(:)
     character(*), intent(in) :: time_mode
     real(dp), intent(inout) :: laplacian(:,:)
-    real(dp), intent(inout) :: vortex(:)
-    
-    integer :: ii, jj, n1
+    real(dp), intent(inout) :: vortex(:,:)
+
+    integer :: ii, n1
     real(dp), allocatable :: rate(:)
-    
+
     n1 = size(laplacian, dim=1)
     select case (time_mode)
       case default !! Unknown Mode. End program.
         write(*,*) "Error: Not known modus! Stop program."
         stop
-        
+
       case ("discrete") !! discrete-time Random Walk mode
         !! Transform laplacian in transition matrix
         laplacian = laplacian * timestep
@@ -51,22 +51,21 @@ contains
         end do
         !! Lets walk
         do ii = 1, maxTimestep
-          vortex = matmul(laplacian,vortex)
+          vortex(:,ii+1) = matmul(laplacian,vortex(:,ii))
         end do
-        
+
       case ("continous") !! continous-time Random Walk mode
       allocate(rate(n1))
+      !! Add Input/Output rates
+      do ii=1, size(io_vertices)
+        laplacian(io_vertices(ii), io_vertices(ii)) = laplacian(io_vertices(ii), io_vertices(ii)) + io_rates(ii)
+      end do
+      !! Lets walk
       do ii = 1, maxTimestep
-        rate = matmul(laplacian,vortex)
-        do jj = 1, size(io_vertices)
-          rate(io_vertices(ii)) = rate(io_vertices(ii)) + io_rates(ii)
-        end do
-        vortex = vortex + rate*timestep
+        rate = matmul(laplacian,vortex(:,ii))
+        vortex(:,ii+1) = vortex(:,ii) + rate*timestep
       end do
     end select
-     
-     
-    
 
   end subroutine CRWalk
 
