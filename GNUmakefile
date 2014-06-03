@@ -1,9 +1,9 @@
 # Compiler, compiler options, linker, linker options
 FC = gfortran
-FCOPTS = -std=f2003 -pedantic -Wall
+FCOPTS = -std=f2003 -pedantic -Wall #-fbounds-check
 LN = $(FC)
-LNOPTS =
-LAPACK = 
+LNOPTS = 
+LAPACK =
 
 # Object files
 OBJS = accuracy.o io.o config.o random.o randomWalk.o networks.o walker.o

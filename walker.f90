@@ -17,7 +17,7 @@ program walker
   integer :: ii, jj, kk, maxTimestep, n1, start, io_n
   integer, allocatable :: distance(:), io_vertices(:)
   real(dp) :: timestep
-  real(dp), allocatable :: vortex(:,:), prob_distance(:,:), io_rates(:), laplacian(:,:)
+  real(dp), allocatable :: vortex(:), total_vortex(:), prob_distance(:), total_distance(:), io_rates(:), laplacian(:,:), entropy(:)
   character(10) :: walk_mode, time_mode
   character(*), parameter :: flaplacian = "laplacian.inp"
   character(*), parameter :: fconfig = "walk.cfg"
@@ -26,15 +26,19 @@ program walker
   character(*), parameter :: ftotal_vortex = "total_vortex.dat"
   character(*), parameter :: ftotal_distance = "total_distance.dat"
   character(*), parameter :: fprob = "prob_distance.dat"
-
+  character(*), parameter :: fentropy = "entropy.dat"
+  character(*), parameter :: fparticle = "particle.dat"
+ 
   call init_random_seed()
+  !! Read Configuration
   call read_config(fconfig, maxTimestep, walk_mode, time_mode, start, io_vertices, io_rates, timestep)
-
+ 
   select case (walk_mode)
   case default !! Unknown Mode. End program.
     write(*,*) "Error: Not known modus! Stop program."
     stop
   case ("CRW") !! Classical Random Walk mode
+    !! Read Laplacian matrix, t1, t2
     call read_matrix_real(flaplacian, laplacian)
     n1 = size(laplacian, dim=1)
     io_n = size(io_vertices)
@@ -44,44 +48,75 @@ program walker
     end if
 
     !! Initialize start distribution
-    allocate(vortex(n1,maxTimestep+1))
+    allocate(vortex(n1))
     vortex = 0
-    vortex(start,1) = 1
-
-    !! do classical random walk
-    call CRWalk(laplacian, vortex, io_vertices, io_rates, timestep, maxTimestep, time_mode)
-    call write_matrix_real(fvortex, vortex)
-
+    vortex(start) = 1
+    call write_matrix_real(fvortex, reshape(vortex, [1, n1]))
+    
+    !! Initialize total vortex
+    allocate(total_vortex(n1))
+    total_vortex = vortex
+    
+    
+    !! Initialize entropy
+    allocate(entropy(maxTimestep+1))
+    entropy = 0
+    entropy(1) = calc_entropy(vortex)
+    
     !! Calculating distance of vertices to start
     call calc_distance(laplacian, distance, start)
     call write_x_int(fdistance, distance)
-
-    !! calculate probability dependent on distance from start
-
-    allocate(prob_distance((maxval(distance)+1),maxTimestep+1))
+    allocate(prob_distance((maxval(distance)+1)))
     prob_distance = 0
-    do kk = 1, maxTimestep+1
-      do ii = 0, maxval(distance)
+   
+    !! calculate probability dependent on distance from start
+    do kk = 0, maxval(distance)
+      do jj = 1, size(distance)
+        if (distance(jj) == kk) then
+          prob_distance(kk+1) = prob_distance(kk+1) + vortex(jj)
+        end if
+      end do
+    end do
+    call write_matrix_real(fprob, reshape(prob_distance, [1, size(prob_distance)]))
+    prob_distance = 0
+     
+    !! Initialize total distance
+    allocate(total_distance(n1))
+    total_distance = vortex
+    
+    !! Write amount of particle in file
+    open(22, file=fparticle, status="replace", form="formatted", action="write")
+    write(22,"(ES15.6)") sum(vortex)
+
+    !! do classical random walk
+    do ii = 1, maxTimestep
+      call CRWalk(laplacian, vortex, io_vertices, io_rates, timestep, time_mode) 
+      call write_matrix_real(fvortex, reshape(vortex, [1, size(vortex)]), state_in = "old", pos_in="append")
+      total_vortex = total_vortex + vortex  !! Integrate probability over time
+      
+      entropy(ii+1) = calc_entropy(vortex)  !! Calculate Entropy
+      
+      !! calculate probability dependent on distance from start
+      do kk = 0, maxval(distance)
         do jj = 1, size(distance)
-          if (distance(jj) == ii) then
-            prob_distance(ii+1,kk) = prob_distance(ii+1,kk) + vortex(jj,kk)
+          if (distance(jj) == kk) then
+            prob_distance(kk+1) = prob_distance(kk+1) + vortex(jj)
           end if
         end do
       end do
+      call write_matrix_real(fprob, reshape(prob_distance, [1, size(prob_distance)]), state_in = "old", pos_in="append")
+      total_distance = total_distance + prob_distance
+      prob_distance = 0
+      
+      write(22,"(ES15.6)") sum(vortex) !! Write amount of particle in file
     end do
-    call write_matrix_real(fprob, prob_distance)
-
-    !! Integrate probability over time
-    do ii = 1, n1
-      vortex(ii,1) = sum(vortex(ii,:))
-    end do
-    do ii = 1, size(prob_distance, dim=1)
-      prob_distance(ii,1) = sum(prob_distance(ii,:))
-    end do
+    close(22)
     
-    call write_x(ftotal_vortex, vortex(:,1))
-    call write_x(ftotal_distance, prob_distance(:,1))
-
+    !! Write results into files
+    call write_x(fentropy, entropy)
+    call write_x(ftotal_vortex, total_vortex)
+    call write_x(ftotal_distance, total_distance)
+    
   case ("QW") !! Quantum Walk
     write(*,*) "Sorry. Not yet implemented. Stop program."
     stop

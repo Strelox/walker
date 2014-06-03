@@ -136,18 +136,39 @@ contains
 
   !> Writes a (integer) matrix into a file
   !!
-  subroutine write_matrix_int(data, array, lineNr, size_out)
+  subroutine write_matrix_int(data, array, lineNr, size_out, state_in, pos_in)
 
     integer :: ii, jj, nn, mm
     character(*), intent(in) :: data
-    character(30) :: form
+    character(30) :: form, state, pos
     real(dp), intent(in) :: array(:,:) 
     logical, optional, intent(in) :: lineNr, size_out
-
+    character(*), optional, intent(in) :: state_in, pos_in
+    
     nn = size(array(:,1))
     mm = size(array(1,:))
-
-    open(12, file=data, status="replace", form="formatted", action="write")
+    
+    if (present(state_in) .eqv. .true.) then
+      if ((state_in /= "new") .or. (state_in /= "old") .or. (state_in /= "replace") .or. (state_in /= "scratch")) then
+        write(*,*) "Wrong file status in write_matrix_int. End program."
+        stop
+      end if
+      state = state_in
+    else
+      state = "replace"
+    end if
+    
+    if (present(pos_in) .eqv. .true.) then
+      if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
+        pos = pos_in
+      else
+        write(*,*) "Error: Wrong position input in write_matrix_int. Stop program."
+      end if
+    else
+      pos = "rewind"
+    end if
+    
+    open(12, file=data, status=state, form="formatted", action="write", position=pos)
     
     if ((present(size_out) .eqv. .true.) .and. (size_out .eqv. .true. )) then
       write(12, "(2(I0))") nn, mm
@@ -170,18 +191,39 @@ contains
 
   !> Writes a (real) matrix into a file
   !!
-  subroutine write_matrix_real(data, array, lineNr, size_out)
-
+  subroutine write_matrix_real(data, array, lineNr, size_out, state_in, pos_in)
+    
     integer :: ii, jj, nn, mm
+    character(30) :: form, state, pos
     character(*), intent(in) :: data
     real(dp), intent(in) :: array(:,:) 
     logical, optional, intent(in) :: lineNr, size_out
-    character(30) :: form
-
+    character(*), optional, intent(in) :: state_in, pos_in
+    
     nn = size(array, dim=1)
     mm = size(array, dim=2)
     
-    open(12, file=data, status="replace", form="formatted", action="write")
+    if (present(state_in) .eqv. .true.) then
+      if ((state_in /= "new") .and. (state_in /= "old") .and. (state_in /= "replace") .and. (state_in /= "scratch")) then
+        write(*,*) "Wrong file status in write_matrix_real. End program."
+        stop
+      end if
+      state = state_in
+    else
+      state = "replace"
+    end if
+    
+    if (present(pos_in) .eqv. .true.) then
+      if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
+        pos = pos_in
+      else
+        write(*,*) "Error: Wrong position input in write_matrix_real. Stop program."
+      end if
+    else
+      pos = "rewind"
+    end if
+    
+    open(12, file=data, status=state, form="formatted", action="write", position=pos)
     
     if ((present(size_out) .eqv. .true.) .and. (size_out .eqv. .true. ))then
       write(12, *) nn, mm
@@ -230,14 +272,41 @@ contains
   !! \param vec  Containing the data to write out
   !! \param data  Name of the outputfile
   !!
-  subroutine write_x(data, vec)
+  subroutine write_x(data, vec, size_out, state_in, pos_in)
     real(dp), intent(in) :: vec(:)
     character(*), intent(in) :: data
+    character(*), optional, intent(in) :: state_in, pos_in
+    logical, optional :: size_out
     integer :: ii
+    character(10) :: state, pos
 
-    open(12, file=data, status="replace", form="formatted", action="write")
+    if (present(state_in) .eqv. .true.) then
+      if ((state_in /= "new") .or. (state_in /= "old") .or. (state_in /= "replace") .or. (state_in /= "scratch")) then
+        write(*,*) "Wrong file status in write_x. End program."
+        stop
+      end if
+      state = state_in
+    else
+      state = "replace"
+    end if
+    
+    if (present(pos_in) .eqv. .true.) then
+      if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
+        pos = pos_in
+      else
+        write(*,*) "Error: Wrong position input in write_x. Stop program."
+      end if
+    else
+      pos = "rewind"
+    end if
+    
+    open(12, file=data, status=state, form="formatted", action="write", position=pos)
+    if ((present(size_out)) .and. (size_out .eqv. .true.)) then
+      write(12, "(I0)") size(vec)
+    end if
+    
     do ii = 1, size(vec)
-       write(12, "(ES15.6)") vec(ii)
+       write(12, "(ES30.8)") vec(ii)
     end do
     close(12)
   end subroutine write_x
