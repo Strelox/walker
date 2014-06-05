@@ -14,7 +14,7 @@ program walker
   implicit none
 
   !! Declarations
-  integer :: ii, jj, kk, maxTimestep, n1, start, io_n
+  integer :: ii, jj, kk, ll, maxTimestep, n1, start, io_n
   integer, allocatable :: distance(:), io_vertices(:)
   real(dp) :: timestep
   real(dp), allocatable :: vortex(:), total_vortex(:), prob_distance(:), total_distance(:), io_rates(:), laplacian(:,:), entropy(:)
@@ -28,6 +28,7 @@ program walker
   character(*), parameter :: fprob = "prob_distance.dat"
   character(*), parameter :: fentropy = "entropy.dat"
   character(*), parameter :: fparticle = "particle.dat"
+  character(*), parameter :: frel = "rel_distance.dat"
  
   call init_random_seed()
   !! Read Configuration
@@ -78,8 +79,12 @@ program walker
       end do
     end do
     call write_matrix_real(fprob, reshape(prob_distance, [1, size(prob_distance)]))
+    do ii = 1, size(prob_distance)
+      prob_distance(ii) = prob_distance(ii)/count(distance == distance(ii))
+    end do
+    call write_matrix_real(frel, reshape(prob_distance, [1, size(prob_distance)]))
     prob_distance = 0
-     
+    
     !! Initialize total distance
     allocate(total_distance(n1))
     total_distance = vortex
@@ -106,6 +111,10 @@ program walker
       end do
       call write_matrix_real(fprob, reshape(prob_distance, [1, size(prob_distance)]), state_in = "old", pos_in="append")
       total_distance = total_distance + prob_distance
+      do ll = 1, size(prob_distance)
+        prob_distance(ll) = prob_distance(ll)/count(distance == distance(ll))
+      end do
+      call write_matrix_real(frel, reshape(prob_distance, [1, size(prob_distance)]), state_in = "old", pos_in="append")
       prob_distance = 0
       
       write(22,"(ES15.6)") sum(vortex) !! Write amount of particle in file

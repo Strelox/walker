@@ -69,7 +69,8 @@ contains
       
       !! Lets walk
       vortex = vortex + rate*timestep
-      where(vortex < 0) 
+      where(vortex < 0)
+        write(*,*) "Warning: Probability gets negative! I fix the issue but you may look for systematic errors."
         vortex = 0
       end where
       
