@@ -1,6 +1,6 @@
 # Compiler, compiler options, linker, linker options
 FC = gfortran
-FCOPTS = -std=f2003 -pedantic -Wall #-fbounds-check
+FCOPTS = -std=f2003 -pedantic -Wall -fbounds-check
 LN = $(FC)
 LNOPTS = 
 LAPACK =
