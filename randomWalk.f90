@@ -29,7 +29,6 @@ contains
         real(dp), intent(inout) :: vortex(:)
         integer :: n1
         real(dp), allocatable :: rate(:)
-
         n1 = size(laplacian, dim=1)
         
         select case (time_mode)
@@ -62,9 +61,10 @@ contains
             
             !! Lets walk
             vortex = vortex + rate*timestep
+            
             !! Add input/output rates
-            vortex(1) = vortex(1) + io_rates(1)/timestep
-            vortex(size(vortex)) = vortex(size(vortex)) + io_rates(2)/timestep
+            vortex(1) = vortex(1) + io_rates(1)*timestep
+            vortex(size(vortex)) = vortex(size(vortex)) + io_rates(2)*timestep
             
             if (minval(vortex) < 0) then
 !                 write(*,*) "Warning: Probability gets negative! I fix the issue but you may look for systematic errors."
@@ -93,4 +93,49 @@ contains
         
     end function calc_entropy
     
+    !> Calculates current
+    subroutine calc_current(laplacian, vortex, io_rates, distance)
+        real(dp), intent(in) :: laplacian(:,:), vortex(:), io_rates(2) 
+        integer, intent(in) :: distance(:)
+        integer :: ii, jj
+        real(dp), allocatable :: current(:)
+        character(*), parameter :: fcurrent = "current.dat"
+        character(*), parameter :: frecurrent = "recurrent.dat"
+        
+        !! Calculates current from start to end
+        allocate(current(size(vortex)+1))
+        current = 0
+        current(1) = io_rates(1)
+        do ii = 1, size(vortex)-1
+            do jj = 1, size(vortex)
+                if (laplacian(ii,jj) /= 0) then
+                    if (distance(jj) == distance(ii) + 1) then
+                        current(ii+1) = current(ii+1) + laplacian(jj,ii)*vortex(ii) - laplacian(ii,jj) * vortex(jj) 
+                    end if
+                end if
+            end do
+        end do
+        current(ubound(current)) = -io_rates(2)
+        
+        call write_matrix_real(fcurrent, reshape(current, [1, size(current)]), state_in = "old", pos_in="append")
+        
+        !! Calculates current from end to start
+        current = 0
+        current(1) = io_rates(1)
+        do ii = 2, size(vortex)
+            do jj = 1, size(vortex)
+                if (laplacian(ii,jj) /= 0) then
+                    if (distance(jj) == distance(ii) - 1) then
+                        current(ii) = current(ii) + laplacian(jj,ii)*vortex(ii) - laplacian(ii,jj) * vortex(jj) 
+                    end if
+                end if
+            end do
+        end do
+        current(ubound(current)) = -io_rates(2)
+        
+        call write_matrix_real(frecurrent, reshape(current, [1, size(current)]), state_in = "old", pos_in="append")
+
+    end subroutine calc_current
+                        
+        
 end module randomWalk

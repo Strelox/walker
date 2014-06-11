@@ -22,7 +22,7 @@ program walker
     character(*), parameter :: flaplacian = "laplacian.inp"
     character(*), parameter :: fconfig = "walk.cfg"
     character(*), parameter :: fvortex = "vortex.dat"
-    character(*), parameter :: fdistance = "disctance.dat"
+    character(*), parameter :: fdistance = "distance.dat"
     character(*), parameter :: ftotal_vortex = "total_vortex.dat"
     character(*), parameter :: ftotal_distance = "total_distance.dat"
     character(*), parameter :: fprob = "prob_distance.dat"
@@ -32,7 +32,10 @@ program walker
  
     !! Read Configuration
     call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep)
-
+    
+    !! Change io_rates per timestep to io_rate
+    io_rates = io_rates/timestep
+    
     select case (walk_mode)
     case default !! Unknown Mode. End program.
         write(*,*) "Error: Not known modus! Stop program."
@@ -87,8 +90,16 @@ program walker
         open(22, file=fparticle, status="replace", form="formatted", action="write")
         write(22,"(ES15.6)") sum(vortex)
         
+        !! Create current.dat
+        open(25, file="current.dat", status="replace", form="formatted", action="write")
+        close(25)
+        !! Create recurrent.dat
+        open(26, file="recurrent.dat", status="replace", form="formatted", action="write")
+        close(26)
+        
         !! do classical random walk
         do ii = 1, maxTimestep
+            call calc_current(laplacian, vortex, io_rates, distance)
             call CRWalk(laplacian, vortex, io_rates, timestep, time_mode) 
             call write_matrix_real(fvortex, reshape(vortex, [1, size(vortex)]), state_in = "old", pos_in="append")
             total_vortex = total_vortex + vortex    !! Integrate probability over time
