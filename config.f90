@@ -8,19 +8,20 @@ contains
 
     !> Reads Configuration of the random Walk
     !!
-    !! \param data                File containing the configuration.
-    !! \param maxTimestep The maximum amount of timesteps that will be simulated.
-    !! \param walk_mode     Mode of the simulated walk (CRW, QW or QSW).
-    !! \param time_mode     The time mode of the simulation (either discrete or continous).
-    !! \param io_rates        Input/Output rates.
-    !! \param timestep        The size of a timestep.
+    !! \param data              File containing the configuration.
+    !! \param maxTimestep       The maximum amount of timesteps that will be simulated.
+    !! \param walk_mode         Mode of the simulated walk (CRW, QW or QSW).
+    !! \param time_mode         The time mode of the simulation (either discrete or continous).
+    !! \param io_rates          Input/Output rates.
+    !! \param timestep          The size of a timestep.
+    !! \param simulation_mode   New simulation or append to old data.
     !!
-    subroutine read_config(data, maxTimestep, walk_mode, time_mode, io_rates, timestep)
+    subroutine read_config(data, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode)
         character(*), intent(in) :: data
         integer, intent(out) :: maxTimestep
         real(dp), intent(out) :: timestep
         real(dp), intent(out) :: io_rates(2)
-        character(*), intent(out) :: walk_mode, time_mode
+        character(*), intent(out) :: walk_mode, time_mode, simulation_mode
         integer :: status
 
         open(14, file=data, status="old", form="formatted", action="read")
@@ -71,7 +72,17 @@ contains
             write(*,*) "Error: timestep has to be non-negative in config file! End program."
             stop
         end if
-
+        
+        !! Read simulation mode
+        read(14,*, iostat=status) simulation_mode
+        if (status /= 0) then
+             write(*,*) "Error: Wrong simulation_mode format in config file! End program."
+             stop
+        else if ((simulation_mode /= "standard") .and. (simulation_mode /= "append")) then
+            write(*,*) "Error: Unknown simulation mode in config file! End program."
+            stop
+        end if
+        
         close(14)
     end subroutine read_config
 

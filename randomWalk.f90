@@ -121,7 +121,7 @@ contains
         
         !! Calculates current from end to start
         current = 0
-        current(1) = io_rates(1)
+        current(1) = -io_rates(1)
         do ii = 2, size(vortex)
             do jj = 1, size(vortex)
                 if (laplacian(ii,jj) /= 0) then
@@ -131,7 +131,7 @@ contains
                 end if
             end do
         end do
-        current(ubound(current)) = -io_rates(2)
+        current(ubound(current)) = io_rates(2)
         
         call write_matrix_real(frecurrent, reshape(current, [1, size(current)]), state_in = "old", pos_in="append")
 
