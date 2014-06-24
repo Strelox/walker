@@ -94,14 +94,12 @@ contains
     end function calc_entropy
     
     !> Calculates current
-    subroutine calc_current(laplacian, vortex, io_rates, distance)
+    subroutine calc_current(current, laplacian, vortex, io_rates, distance)
         real(dp), intent(in) :: laplacian(:,:), vortex(:), io_rates(2) 
         integer, intent(in) :: distance(:)
         integer :: ii, jj
-        real(dp), allocatable :: current(:)
-        character(*), parameter :: fcurrent = "current.dat"
-        character(*), parameter :: frecurrent = "recurrent.dat"
-        
+        real(dp), allocatable, intent(out) :: current(:)
+
         !! Calculates current from start to end
         allocate(current(size(vortex)+1))
         current = 0
@@ -117,25 +115,30 @@ contains
         end do
         current(ubound(current)) = -io_rates(2)
         
-        call write_matrix_real(fcurrent, reshape(current, [1, size(current)]), state_in = "old", pos_in="append")
+    end subroutine calc_current
+    
+    subroutine calc_recurrent(recurrent, laplacian, vortex, io_rates, distance)
+        real(dp), intent(in) :: laplacian(:,:), vortex(:), io_rates(2) 
+        integer, intent(in) :: distance(:)
+        integer :: ii, jj
+        real(dp), allocatable, intent(out) :: recurrent(:)
         
-        !! Calculates current from end to start
-        current = 0
-        current(1) = -io_rates(1)
+        !! Calculates recurrent from end to start
+        allocate(recurrent(size(vortex)+1))
+        recurrent = 0
+        recurrent(1) = -io_rates(1)
         do ii = 2, size(vortex)
             do jj = 1, size(vortex)
                 if (laplacian(ii,jj) /= 0) then
                     if (distance(jj) == distance(ii) - 1) then
-                        current(ii) = current(ii) + laplacian(jj,ii)*vortex(ii) - laplacian(ii,jj) * vortex(jj) 
+                        recurrent(ii) = recurrent(ii) + laplacian(jj,ii)*vortex(ii) - laplacian(ii,jj) * vortex(jj) 
                     end if
                 end if
             end do
         end do
-        current(ubound(current)) = io_rates(2)
-        
-        call write_matrix_real(frecurrent, reshape(current, [1, size(current)]), state_in = "old", pos_in="append")
-
-    end subroutine calc_current
+        recurrent(ubound(recurrent)) = io_rates(2)
+      
+    end subroutine calc_recurrent
                         
         
 end module randomWalk

@@ -16,12 +16,12 @@ contains
     !! \param timestep          The size of a timestep.
     !! \param simulation_mode   New simulation or append to old data.
     !!
-    subroutine read_config(data, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode)
+    subroutine read_config(data, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode)
         character(*), intent(in) :: data
         integer, intent(out) :: maxTimestep
         real(dp), intent(out) :: timestep
         real(dp), intent(out) :: io_rates(2)
-        character(*), intent(out) :: walk_mode, time_mode, simulation_mode
+        character(*), intent(out) :: walk_mode, time_mode, simulation_mode, write_mode
         integer :: status
 
         open(14, file=data, status="old", form="formatted", action="read")
@@ -80,6 +80,16 @@ contains
              stop
         else if ((simulation_mode /= "standard") .and. (simulation_mode /= "append")) then
             write(*,*) "Error: Unknown simulation mode in config file! End program."
+            stop
+        end if
+        
+        !! Read write mode
+        read(14,*, iostat=status) write_mode
+        if (status /= 0) then
+             write(*,*) "Error: Wrong write_mode format in config file! End program."
+             stop
+        else if ((write_mode /= "all") .and. (write_mode /= "end")) then
+            write(*,*) "Error: Unknown write mode in config file! End program."
             stop
         end if
         
