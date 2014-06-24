@@ -18,6 +18,7 @@ program walker
     real(dp) :: timestep, io_rates(2),entropy
     real(dp), allocatable :: vortex(:), total_vortex(:), prob_distance(:), total_distance(:)
     real(dp), allocatable :: current(:), recurrent(:), laplacian(:,:)
+    real(dp) :: test_particle(10), test_entropy(10)
     character(10) :: walk_mode, time_mode, simulation_mode, write_mode
     character(*), parameter :: flaplacian = "laplacian.inp"
     character(*), parameter :: fconfig = "walk.cfg"
@@ -57,6 +58,9 @@ program walker
         allocate(total_distance(n1))
         allocate(current(n1))
         allocate(recurrent(n1))
+        
+        test_entropy = 0
+        test_particle = 0
         
         !! Calculating distance of vertices to start
         call calc_distance(laplacian, distance)
@@ -168,6 +172,11 @@ program walker
                 call write_real(fentropy, entropy, state_in="old", pos_in="append")
             end if
             
+            if (maxTimestep - ii < 10) then
+                test_entropy(maxTimestep - ii+1) = entropy
+                test_particle(maxTimestep - ii+1) = sum(vortex)
+            end if
+            
             !! calculate probability dependent on distance from start
             do kk = 0, maxval(distance)
                 do jj = 1, size(distance)
@@ -201,7 +210,19 @@ program walker
         call write_real(fend_particle, sum(vortex))
         call write_vec_real(fend_current, current, horizontal=.true.)
         call write_vec_real(fend_recurrent, recurrent, horizontal=.true.)
-
+        
+        !! Look for reaching steady state
+        if (maxTimestep >= 10) then
+            if (any(test_entropy /= test_entropy(1))) then
+                write(*,*) "Entropy did not reach steady state!"
+            end if
+            if (any(test_particle /= test_particle(1))) then
+                write(*,*) "Particle did not reach steady state!"
+            end if
+        else
+            write(*,*) "Could not verify steady state due short simulation time."
+        end if
+        
     case ("QW") !! Quantum Walk
         write(*,*) "Sorry. Not yet implemented. Stop program."
         stop
