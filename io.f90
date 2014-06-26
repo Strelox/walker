@@ -361,7 +361,7 @@ contains
             write(19, "(I0)") nn
         end if
         
-        if (horizontal .eqv. .true.) then
+        if ((present(size_out) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
             write(form, "(A1, I0, A)") "(", (nn), "(I15, 2X))"
             write(19, form) (vec(ii), ii=1, nn)
         else
@@ -419,12 +419,12 @@ contains
             write(20, "(I0)") nn
         end if
         
-        if (horizontal .eqv. .true.) then
+        if ((present(size_out) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
             write(form, "(A1, I0, A)") "(", (nn), "(ES15.6, 2X))"
             write(20, form) (vec(ii), ii=1, nn)
         else
             do ii = 1, nn
-            write(20, "(ES15.6)") vec(ii)
+                write(20, "(ES15.6)") vec(ii)
             end do
         end if
         

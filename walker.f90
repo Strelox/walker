@@ -12,14 +12,8 @@ program walker
     use randomWalk
     implicit none
 
-    !! Declarations
-    integer :: ii, jj, kk, ll, maxTimestep, n1, counter
-    integer, allocatable :: distance(:)
-    real(dp) :: timestep, io_rates(2),entropy
-    real(dp), allocatable :: vortex(:), total_vortex(:), prob_distance(:), total_distance(:)
-    real(dp), allocatable :: current(:), recurrent(:), laplacian(:,:)
-    real(dp) :: test_particle(10), test_entropy(10)
-    character(10) :: walk_mode, time_mode, simulation_mode, write_mode
+    !! Parameters
+    integer, parameter :: test_range = 100
     character(*), parameter :: flaplacian = "laplacian.inp"
     character(*), parameter :: fconfig = "walk.cfg"
     character(*), parameter :: fvortex = "vortex.dat"
@@ -37,6 +31,16 @@ program walker
     character(*), parameter :: fend_particle = "end_particle.dat"
     character(*), parameter :: fend_current = "end_current.dat"
     character(*), parameter :: fend_recurrent = "end_recurrent.dat"
+    
+    !! Declarations
+    integer :: ii, jj, kk, ll, maxTimestep, n1, counter
+    integer, allocatable :: distance(:)
+    real(dp) :: timestep, io_rates(2),entropy
+    real(dp), allocatable :: vortex(:), total_vortex(:), prob_distance(:), total_distance(:)
+    real(dp), allocatable :: current(:), recurrent(:), laplacian(:,:)
+    real(dp) :: test_particle(test_range), test_entropy(test_range)
+    character(10) :: walk_mode, time_mode, simulation_mode, write_mode
+    
     !! Read Configuration
     call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode)
     
@@ -172,7 +176,7 @@ program walker
                 call write_real(fentropy, entropy, state_in="old", pos_in="append")
             end if
             
-            if (maxTimestep - ii < 10) then
+            if (maxTimestep - ii < test_range) then
                 test_entropy(maxTimestep - ii+1) = entropy
                 test_particle(maxTimestep - ii+1) = sum(vortex)
             end if
@@ -208,11 +212,11 @@ program walker
         call write_x(fend_vortex, vortex)
         call write_real(fend_entropy, entropy)
         call write_real(fend_particle, sum(vortex))
-        call write_vec_real(fend_current, current, horizontal=.true.)
-        call write_vec_real(fend_recurrent, recurrent, horizontal=.true.)
+        call write_vec_real(fend_current, current)
+        call write_vec_real(fend_recurrent, recurrent)
         
         !! Look for reaching steady state
-        if (maxTimestep >= 10) then
+        if (maxTimestep >= test_range) then
             if (any(test_entropy /= test_entropy(1))) then
                 write(*,*) "Entropy did not reach steady state!"
             end if
