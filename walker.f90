@@ -10,6 +10,7 @@ program walker
     use config
     use networks
     use randomWalk
+    use quantumWalk
     implicit none
 
     !! Parameters
@@ -31,6 +32,7 @@ program walker
     character(*), parameter :: fend_particle = "end_particle.dat"
     character(*), parameter :: fend_current = "end_current.dat"
     character(*), parameter :: fend_recurrent = "end_recurrent.dat"
+    character(*), parameter :: fhamiltonian = "hamiltonian.inp"
     
     !! Declarations
     integer :: ii, jj, kk, ll, maxTimestep, n1, counter
@@ -40,6 +42,7 @@ program walker
     real(dp), allocatable :: current(:), recurrent(:), laplacian(:,:)
     real(dp) :: test_particle(test_range), test_entropy(test_range)
     character(10) :: walk_mode, time_mode, simulation_mode, write_mode
+    complex(dp), allocatable :: hamiltonian(:,:), density_matrix(:,:)
     
     !! Read Configuration
     call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode)
@@ -228,8 +231,29 @@ program walker
         end if
         
     case ("QW") !! Quantum Walk
-        write(*,*) "Sorry. Not yet implemented. Stop program."
-        stop
+        !! Read hamiltonian
+        call read_matrix_complex(fhamiltonian, hamiltonian)
+        n1 = size(hamiltonian, dim=1)
+        
+        allocate(density_matrix(n1, n1))
+        density_matrix = (0.0_dp, 0.0_dp)
+        density_matrix(1,1) = (1.0_dp, 0.0_dp)
+        
+        write(*,"(A)") "____________-________-_________-"
+        write(*,"(A)", advance="no") "Start QW: [" !! start progress bar
+        counter = 1
+        call write_vec_complex(fvortex, reshape(density_matrix, [(n1**2)]), state_in = "replace", horizontal=.true.)
+        do ii = 1, maxTimestep
+            !! progress bar
+            if (ii == (counter*maxTimestep/20)) then
+                write(*,"(A1)", advance="no") "#"
+                counter = counter + 1
+            end if
+            call QWalk(hamiltonian, density_matrix, io_rates, timestep)
+            call write_vec_complex(fvortex, reshape(density_matrix, [(n1**2)]), state_in="old", &
+                                   &pos_in = "append", horizontal=.true.)
+        end do
+        write(*,"(A)") "] Done."
     end select
 
 end program walker

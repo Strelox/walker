@@ -6,7 +6,7 @@ LNOPTS =
 LAPACK =
 
 # Object files
-OBJS = accuracy.o io.o config.o random.o randomWalk.o networks.o walker.o
+OBJS = accuracy.o io.o config.o random.o randomWalk.o quantumWalk.o networks.o walker.o
 
 
 walker: $(OBJS)
@@ -24,6 +24,8 @@ config.o: accuracy.o
 random.o:
 
 randomWalk.o: accuracy.o io.o random.o
+
+quantumWalk.o: accuracy.o io.o random.o
 
 networks.o: accuracy.o io.o random.o
 

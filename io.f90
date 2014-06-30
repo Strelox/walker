@@ -186,12 +186,13 @@ contains
              stop
         end if
 
-        !! Reads matrix50
+        !! Reads matrix
         allocate(matrix(n1,n2))
         do ii = 1, n1
              read(15,*, iostat=status) (matrix(ii,jj), jj=1,n2)
              if (status /= 0) then
                     write(*,"(A)") "incorrect input in matrix"
+                    write(*,*) status
                     stop
              end if
         end do
@@ -395,7 +396,7 @@ contains
         
         if (present(state_in) .eqv. .true.) then
             if ((state_in /= "new") .or. (state_in /= "old") .or. (state_in /= "replace") .or. (state_in /= "scratch")) then
-                write(*,*) "Wrong file status in write_vec_int. End program."
+                write(*,*) "Wrong file status in write_vec_real. End program."
                 stop
             end if
             state = state_in
@@ -407,7 +408,7 @@ contains
             if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
                 pos = pos_in
             else
-                write(*,*) "Error: Wrong position input in write_vec_int. Stop program."
+                write(*,*) "Error: Wrong position input in write_vec_real. Stop program."
             end if
         else
             pos = "rewind"
@@ -430,6 +431,64 @@ contains
         
         close(20)
     end subroutine write_vec_real
+    
+    !> Writes a (complex) vector into a file
+    !!
+    !! \param data          file to write in
+    !! \param vec           vector which is to write
+    !! \param size_out      should the size of the vector be written in the first line of the file
+    !! \param state_in      write in new or old file or replace existing file
+    !! \param pos_in        write from begin of the file or append to it
+    !! \param horizontal    should the vector be written horizontal instead of vertical?
+    !!
+    subroutine write_vec_complex(data, vec, size_out, state_in, pos_in, horizontal)
+
+        integer :: ii, nn
+        character(*), intent(in) :: data
+        character(30) :: form, state, pos
+        complex(dp), intent(in) :: vec(:) 
+        logical, optional, intent(in) :: size_out, horizontal
+        character(*), optional, intent(in) :: state_in, pos_in
+        
+        nn = size(vec)
+        
+        if (present(state_in) .eqv. .true.) then
+            if ((state_in /= "new") .and. (state_in /= "old") .and. (state_in /= "replace") .and. (state_in /= "scratch")) then
+                write(*,*) "Wrong file status in write_vec_complex. End program."
+                stop
+            end if
+            state = state_in
+        else
+            state = "replace"
+        end if
+        
+        if (present(pos_in) .eqv. .true.) then
+            if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
+                pos = pos_in
+            else
+                write(*,*) "Error: Wrong position input in write_vec_complex. Stop program."
+            end if
+        else
+            pos = "rewind"
+        end if
+        
+        open(20, file=data, status=state, form="formatted", action="write", position=pos)
+        
+        if ((present(size_out) .eqv. .true.) .and. (size_out .eqv. .true. )) then
+            write(20, "(I0)") nn
+        end if
+        
+        if ((present(horizontal) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
+            write(form, "(A1, I0, A)") "(", (nn), "(2(ES15.6, 2X)))"
+            write(20, form) (vec(ii), ii=1, nn)
+        else
+            do ii = 1, nn
+                write(20, "(2(ES15.6))") vec(ii)
+            end do
+        end if
+        
+        close(20)
+    end subroutine write_vec_complex
     
     !> Writes a (integer) matrix into a file
     !!
