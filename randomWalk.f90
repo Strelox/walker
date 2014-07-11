@@ -1,4 +1,4 @@
-!> Provides the routines for each type of random walk.
+!> Provides the routines for the classical random walk.
 !!
 module randomWalk
     use accuracy
@@ -60,7 +60,7 @@ contains
             rate = matmul(laplacian,vortex)
             
             !! Lets walk
-            vortex = vortex + rate*timestep
+            vortex = vortex - rate*timestep
             
             !! Add input/output rates
             vortex(1) = vortex(1) + io_rates(1)*timestep

@@ -11,6 +11,7 @@ program walker
     use networks
     use randomWalk
     use quantumWalk
+    use f95_lapack
     implicit none
 
     !! Parameters
@@ -33,19 +34,24 @@ program walker
     character(*), parameter :: fend_current = "end_current.dat"
     character(*), parameter :: fend_recurrent = "end_recurrent.dat"
     character(*), parameter :: fhamiltonian = "hamiltonian.inp"
+    character(*), parameter :: fdensity = "density_matrix.dat"
+    character(*), parameter :: ftrace = "trace.dat"
+    character(*), parameter :: feigenval = "eigenval.dat"
+    character(*), parameter :: feigenvec = "eigenvec.dat"
     
     !! Declarations
     integer :: ii, jj, kk, ll, maxTimestep, n1, counter
     integer, allocatable :: distance(:)
-    real(dp) :: timestep, io_rates(2),entropy
+    real(dp) :: timestep, io_rates(2), entropy, correction
     real(dp), allocatable :: vortex(:), total_vortex(:), prob_distance(:), total_distance(:)
     real(dp), allocatable :: current(:), recurrent(:), laplacian(:,:)
     real(dp) :: test_particle(test_range), test_entropy(test_range)
     character(10) :: walk_mode, time_mode, simulation_mode, write_mode
     complex(dp), allocatable :: hamiltonian(:,:), density_matrix(:,:)
+    complex(dp) :: trace
     
     !! Read Configuration
-    call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode)
+    call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode, correction)
     
     !! Change io_rates per timestep to io_rate
     io_rates = io_rates/timestep
@@ -62,7 +68,7 @@ program walker
         !! Allocation
         allocate(vortex(n1))
         allocate(total_vortex(n1))
-        allocate(total_distance(n1))
+        
         allocate(current(n1))
         allocate(recurrent(n1))
         
@@ -70,11 +76,10 @@ program walker
         test_particle = 0
         
         !! Calculating distance of vertices to start
-        call calc_distance(laplacian, distance)
-        if (write_mode == "all") then
-            call write_x_int(fdistance, distance)
-        end if
+        call calc_distance(laplacian, distance)     
+        call write_x_int(fdistance, distance)
         allocate(prob_distance((maxval(distance)+1)))
+        allocate(total_distance((maxval(distance)+1)))
         prob_distance = 0
         
         select case (simulation_mode)
@@ -141,7 +146,7 @@ program walker
             call read_vec_real(ftotal_vortex, total_vortex, vec_size=n1)
             
             !! Read old total_distance
-            call read_vec_real(ftotal_distance, total_distance, vec_size=n1)
+            call read_vec_real(ftotal_distance, total_distance, vec_size=size(total_distance))
              
         end select
         
@@ -230,7 +235,13 @@ program walker
             write(*,*) "Could not verify steady state due short simulation time."
         end if
         
-    case ("QW") !! Quantum Walk
+    case ("QW") !! Quantum Walkdensity_matrix
+    
+        !! Creates new eigenvalue file
+        open(43, file=feigenval, status="replace", form="formatted", action="write")
+        close(43)
+
+        
         !! Read hamiltonian
         call read_matrix_complex(fhamiltonian, hamiltonian)
         n1 = size(hamiltonian, dim=1)
@@ -239,21 +250,38 @@ program walker
         density_matrix = (0.0_dp, 0.0_dp)
         density_matrix(1,1) = (1.0_dp, 0.0_dp)
         
+        call write_complex(ftrace, trace_complex(density_matrix)) 
+        !! Initialize Progress bar    
         write(*,"(A)") "____________-________-_________-"
         write(*,"(A)", advance="no") "Start QW: [" !! start progress bar
         counter = 1
-        call write_vec_complex(fvortex, reshape(density_matrix, [(n1**2)]), state_in = "replace", horizontal=.true.)
+        
+        !! Initial Entropy calculation
+        entropy = vonNeumann_entropy(density_matrix)
+        call write_real(fentropy, entropy, state_in="replace")
+        call write_vec_complex(fdensity, reshape(density_matrix, [(n1**2)]), state_in = "replace", horizontal=.true.)
+        
         do ii = 1, maxTimestep
             !! progress bar
             if (ii == (counter*maxTimestep/20)) then
                 write(*,"(A1)", advance="no") "#"
                 counter = counter + 1
             end if
-            call QWalk(hamiltonian, density_matrix, io_rates, timestep)
-            call write_vec_complex(fvortex, reshape(density_matrix, [(n1**2)]), state_in="old", &
+            
+            !! 1-timestep of Quantum Walk
+            call QWalk(hamiltonian, density_matrix, timestep, correction)
+            call write_vec_complex(fdensity, reshape(density_matrix, [(n1**2)]), state_in="old", &
                                    &pos_in = "append", horizontal=.true.)
+            trace = trace_complex(density_matrix)
+            if ( (real(trace, dp) > 1.0_dp + timestep) .or. (real(trace, dp) < 1.0_dp - timestep) )then
+                write(*,*) "Warning: Trace of density_matrix is not 1!"
+            end if
+            call write_complex(ftrace, trace_complex(density_matrix), state_in = "old", pos_in = "append") 
+            entropy = vonNeumann_entropy(density_matrix, timestep)
+            call write_real(fentropy, entropy, state_in="old", pos_in="append")
         end do
         write(*,"(A)") "] Done."
+        
     end select
 
 end program walker

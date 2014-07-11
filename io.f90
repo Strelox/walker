@@ -316,6 +316,46 @@ contains
         
     end subroutine write_real
     
+    !> Writes a (complex) scalar into a file
+    !!
+    !! \param data          file to write in
+    !! \param scalar        number which is to write
+    !! \param state_in      write in new or old file or replace existing file
+    !! \param pos_in        write from begin of the file or append to it
+    !!
+    subroutine write_complex(data, scalar, state_in, pos_in)
+        !! Declarations
+        character(*), intent(in) :: data
+        complex(dp), intent(in)  :: scalar
+        character(*), optional, intent(in) :: state_in, pos_in
+        character(30) :: pos, state
+        
+        if (present(state_in) .eqv. .true.) then
+            if ((state_in /= "new") .and. (state_in /= "old") .and. (state_in /= "replace") .and. (state_in /= "scratch")) then
+                write(*,*) "Wrong file status in write_complex. End program."
+                stop
+            end if
+            state = state_in
+        else
+            state = "replace"
+        end if
+        
+        if (present(pos_in) .eqv. .true.) then
+            if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
+                pos = pos_in
+            else
+                write(*,*) "Error: Wrong position input in writ_complex. Stop program."
+            end if
+        else
+            pos = "rewind"
+        end if
+        
+        open(18, file=data, status=state, form="formatted", action="write", position=pos)
+        write(18, "(ES15.6, ES15.6)") scalar
+        close(18)     
+        
+    end subroutine write_complex
+    
     !> Writes a (integer) vector into a file
     !!
     !! \param data          file to write in
@@ -395,7 +435,7 @@ contains
         nn = size(vec)
         
         if (present(state_in) .eqv. .true.) then
-            if ((state_in /= "new") .or. (state_in /= "old") .or. (state_in /= "replace") .or. (state_in /= "scratch")) then
+            if ((state_in /= "new") .and. (state_in /= "old") .and. (state_in /= "replace") .and. (state_in /= "scratch")) then
                 write(*,*) "Wrong file status in write_vec_real. End program."
                 stop
             end if
@@ -420,7 +460,7 @@ contains
             write(20, "(I0)") nn
         end if
         
-        if ((present(size_out) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
+        if ((present(horizontal) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
             write(form, "(A1, I0, A)") "(", (nn), "(ES15.6, 2X))"
             write(20, form) (vec(ii), ii=1, nn)
         else
@@ -614,6 +654,68 @@ contains
         close(22)
     end subroutine write_matrix_real
 
+    !> Writes a (complex) matrix into a file
+    !!
+    !! \param data          file to write in
+    !! \param matrix        matrix which is to write
+    !! \param lineNr        should the line number be written in the first column?
+    !! \param size_out      should the size of the matrix be written in the first line of the file
+    !! \param state_in      write in new or old file or replace existing file
+    !! \param pos_in        write from begin of the file or append to it
+    !!
+    subroutine write_matrix_complex(data, array, lineNr, size_out, state_in, pos_in)
+        
+        integer :: ii, jj, nn, mm
+        character(30) :: form, state, pos
+        character(*), intent(in) :: data
+        complex(dp), intent(in) :: array(:,:) 
+        logical, optional, intent(in) :: lineNr, size_out
+        character(*), optional, intent(in) :: state_in, pos_in
+        
+        nn = size(array, dim=1)
+        mm = size(array, dim=2)
+        
+        if (present(state_in) .eqv. .true.) then
+            if ((state_in /= "new") .and. (state_in /= "old") .and. (state_in /= "replace") .and. (state_in /= "scratch")) then
+                write(*,*) "Wrong file status in write_matrix_complex. End program."
+                stop
+            end if
+            state = state_in
+        else
+            state = "replace"
+        end if
+        
+        if (present(pos_in) .eqv. .true.) then
+            if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
+                pos = pos_in
+            else
+                write(*,*) "Error: Wrong position input in write_matrix_complex. Stop program."
+            end if
+        else
+            pos = "rewind"
+        end if
+        
+        open(22, file=data, status=state, form="formatted", action="write", position=pos)
+        
+        if ((present(size_out) .eqv. .true.) .and. (size_out .eqv. .true. ))then
+            write(22, *) nn, mm
+        end if
+
+        if ((present(lineNr) .eqv. .true. ) .and. ( lineNr .eqv. .true.)) then
+            write(form, "(A3, I0, A)") "(I,", (nn), "(2(ES15.6, 2X)))"
+            do ii = 1, nn
+            write(22, form) ii, (array(ii,jj), jj=1, mm)
+            end do
+        else 
+            write(form, "(A1, I0, A)") "(", (mm), "(2(ES15.6, 2X)))"
+            do ii = 1, nn
+            write(22, form) (array(ii,jj), jj=1, mm)
+            end do
+        end if
+        
+        close(22)
+    end subroutine write_matrix_complex
+    
     !> Writes an (real) array into a file
     !!
     subroutine write_array_real(data, array)

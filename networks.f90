@@ -40,22 +40,28 @@ contains
     subroutine calc_distance(laplacian, distance)
         real(dp), intent(in) :: laplacian(:,:)
         integer, allocatable, intent(out) :: distance(:)
-        integer :: ii, jj, n1
+        integer :: ii, jj, kk, n1
         
         n1 = size(laplacian, dim=1)
         allocate(distance(n1))
         distance = 0
          
-        do ii = 1, n1
-             do jj = 1, n1
-                    if ((laplacian(ii,jj) > 0.0) .and. (jj /= 1)) then
-                         if ((distance(jj) == 0).or.(distance(jj) > distance(ii) + 1)) then
-                                distance(jj) = distance(ii) + 1
-                         end if
-                    end if
-             end do
+  
+        do kk = 2, n1   ! Calculates connections to start node
+            if (laplacian(1,kk) < 0.0) then
+                distance(kk) = 1
+            end if
         end do
         
+        do ii = 1, n1   ! Distance to start
+            do jj = 2, n1   ! First one ist start node
+                do kk = 2, n1
+                    if ( (distance(jj) == ii) .and. (laplacian(jj,kk) < 0.0) .and. (distance(kk) == 0) ) then
+                            distance(kk) = distance(jj) + 1
+                    end if
+                end do
+            end do
+        end do
     end subroutine calc_distance
     
 end module networks

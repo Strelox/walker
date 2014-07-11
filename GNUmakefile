@@ -1,19 +1,24 @@
 # Compiler, compiler options, linker, linker options
 FC = gfortran
-FCOPTS = -std=f2003 -pedantic -Wall -fbounds-check
+FCOPTS = -std=f2003 -pedantic -Wall -fbounds-check -fall-intrinsics
 LN = $(FC)
-LNOPTS = 
-LAPACK =
+LNOPTS =
+
+LAPACK95_LIBDIR = /usr/local/lib
+LAPACK95 = lapack95-gfortran
+LAPACK95_MODDIR = /usr/local/lib/lapack95-gfortran_modules
+LAPACK = lapack
+BLAS = blas
 
 # Object files
 OBJS = accuracy.o io.o config.o random.o randomWalk.o quantumWalk.o networks.o walker.o
 
 
 walker: $(OBJS)
-	$(LN) $(LNOPTS) -o $@ $^ $(LAPACK)
+	$(LN) $(LNOPTS) -o $@ $^ -L$(LAPACK95_LIBDIR) -l$(LAPACK95) -l$(LAPACK) -l$(BLAS)
 
 %.o: %.f90
-	$(FC) $(FCOPTS) -c  $<
+	$(FC) $(FCOPTS) -c -I$(LAPACK95_MODDIR) $<
 
 accuracy.o:
 
