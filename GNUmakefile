@@ -4,10 +4,12 @@ FCOPTS = -std=f2003 -pedantic -Wall -fbounds-check -fall-intrinsics
 LN = $(FC)
 LNOPTS =
 
-LAPACK95_LIBDIR = /usr/local/lib
-LAPACK95 = lapack95-gfortran
-LAPACK95_MODDIR = /usr/local/lib/lapack95-gfortran_modules
+LAPACK95_LIBDIR = /home/frank/lib/LAPACK95
+LAPACK95 = lapack95
+LAPACK95_MODDIR = /home/frank/lib/LAPACK95/lapack95_modules
+LAPACK_LIBDIR = /home/frank/lib/LAPACK
 LAPACK = lapack
+BLAS_LIBDIR = /home/frank/lib/BLAS
 BLAS = blas
 
 # Object files
@@ -15,7 +17,7 @@ OBJS = accuracy.o io.o config.o random.o randomWalk.o quantumWalk.o networks.o w
 
 
 walker: $(OBJS)
-	$(LN) $(LNOPTS) -o $@ $^ -L$(LAPACK95_LIBDIR) -l$(LAPACK95) -l$(LAPACK) -l$(BLAS)
+	$(LN) $(LNOPTS) -o $@ $^ -L$(LAPACK95_LIBDIR) -L$(LAPACK_LIBDIR) -L$(BLAS_LIBDIR) -l$(LAPACK95) -l$(LAPACK) -l$(BLAS)
 
 %.o: %.f90
 	$(FC) $(FCOPTS) -c -I$(LAPACK95_MODDIR) $<

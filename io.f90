@@ -234,6 +234,45 @@ contains
         close(16)
     end subroutine read_array
     
+    !> Reads a (complex) array from a file
+    !!
+    !! \param data          file to read from
+    !! \param array        array to write the data in
+    !!
+    subroutine read_array_complex(data, array)
+
+        !! Declarations
+        integer :: ii, jj, kk, status, n1, n2, n3
+        character(*), intent(in) :: data
+        complex(dp), allocatable, intent(out) :: array(:,:,:)
+
+        !! Reads size of array
+        open(15, file=data, status="old", form="formatted", action="read")
+        read(15,*, iostat=status) n1, n2, n3
+        if (status /= 0) then
+             write(*,"(A)") "incorrect input at size"
+             stop
+        end if
+
+        !! Reads array
+        allocate(array(n1,n2,n3))
+        
+        do kk = 1, n3
+            do ii = 1, n1
+                read(15,*, iostat=status) (array(ii,jj,kk), jj=1,n2)
+                if (status /= 0) then
+                        write(*,"(A)") "incorrect input in array in "
+                        write(*,*) ii, jj, kk
+                        write(*,*) status
+                        stop
+                end if
+            end do
+            read(15,*)
+        end do
+
+        close(15)
+    end subroutine read_array_complex
+    
 !---------------------------Output------------------------------
 
     !> Writes a (integer) scalar into a file

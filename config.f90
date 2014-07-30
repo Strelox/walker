@@ -41,7 +41,7 @@ contains
         if (status /= 0) then
              write(*,*) "Error: Wrong walk_mode format in config file! End program."
              stop
-        else if ((walk_mode /= "CRW") .and. (walk_mode /= "QW")) then
+        else if ((walk_mode /= "CRW") .and. (walk_mode /= "QW") .and. (walk_mode /= "QSW")) then
             write(*,*) "Error: Unknown walk mode in config file! End program."
             stop
         end if
