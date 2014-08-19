@@ -13,14 +13,15 @@ program walker
     use quantumWalk
     use f95_lapack
     implicit none
-
+   
+   
     !! Parameters
     integer, parameter :: test_range = 100
     character(*), parameter :: flaplacian = "laplacian.inp"
     character(*), parameter :: fconfig = "walk.cfg"
-    character(*), parameter :: fvortex = "vortex.dat"
+    character(*), parameter :: fvertex = "vertex.dat"
     character(*), parameter :: fdistance = "distance.dat"
-    character(*), parameter :: ftotal_vortex = "total_vortex.dat"
+    character(*), parameter :: ftotal_vertex = "total_vertex.dat"
     character(*), parameter :: ftotal_distance = "total_distance.dat"
     character(*), parameter :: fprob = "prob_distance.dat"
     character(*), parameter :: fentropy = "entropy.dat"
@@ -28,7 +29,7 @@ program walker
     character(*), parameter :: frel = "rel_distance.dat"
     character(*), parameter :: fcurrent = "current.dat"
     character(*), parameter :: frecurrent = "recurrent.dat"
-    character(*), parameter :: fend_vortex = "end_vortex.dat"
+    character(*), parameter :: fend_vertex = "end_vertex.dat"
     character(*), parameter :: fend_entropy = "end_entropy.dat"
     character(*), parameter :: fend_particle = "end_particle.dat"
     character(*), parameter :: fend_current = "end_current.dat"
@@ -38,21 +39,26 @@ program walker
     character(*), parameter :: feigenval = "eigenval.dat"
     character(*), parameter :: feigenvec = "eigenvec.dat"
     character(*), parameter :: fenvironment = "environment.inp"
+    character(*), parameter :: flog = "error.log"
+    character(*), parameter :: ftrace = "trace.dat"
     
     !! Declarations
-    integer :: ii, jj, kk, ll, maxTimestep, n1, counter
+    integer :: ii, jj, kk, ll, maxTimestep, nn, counter
     integer, allocatable :: distance(:)
-    real(dp) :: timestep, io_rates(2), entropy, correction
-    real(dp), allocatable :: vortex(:), total_vortex(:), prob_distance(:), total_distance(:)
+    real(dp) :: timestep, io_rates(2), entropy, p_env, dec_time
+    real(dp), allocatable :: vertex(:), total_vertex(:), prob_distance(:), total_distance(:)
     real(dp), allocatable :: current(:), recurrent(:), laplacian(:,:)
     real(dp) :: test_particle(test_range), test_entropy(test_range)
     character(10) :: walk_mode, time_mode, simulation_mode, write_mode
-    complex(dp), allocatable :: hamiltonian(:,:), density_matrix(:,:), environment(:,:,:)
+    complex(dp), allocatable :: hamiltonian(:,:), density_matrix(:,:), environment(:,:,:), qcurrent(:)
     complex(dp) :: trace
-    logical :: neg_ev, complex_diag, neg_diag, not_hermitian
+    logical :: neg_ev, complex_diag, neg_diag, not_hermitian, complex_trace, not_norm, correct
+    
+    !! Open error.log
+    open(60, file=flog, status="replace", form="formatted", action="write")
     
     !! Read Configuration
-    call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode, correction)
+    call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode, dec_time)
     
     !! Change io_rates per timestep to io_rate
     io_rates = io_rates/timestep
@@ -64,14 +70,14 @@ program walker
     case ("CRW") !! Classical Random Walk mode
         !! Read Laplacian matrix
         call read_matrix_real(flaplacian, laplacian)
-        n1 = size(laplacian, dim=1)
+        nn = size(laplacian, dim=1)
         
         !! Allocation
-        allocate(vortex(n1))
-        allocate(total_vortex(n1))
+        allocate(vertex(nn))
+        allocate(total_vertex(nn))
         
-        allocate(current(n1))
-        allocate(recurrent(n1))
+        allocate(current(nn))
+        allocate(recurrent(nn))
         
         test_entropy = 0
         test_particle = 0
@@ -90,17 +96,17 @@ program walker
             stop
         case ("standard") !! Start new simulation
             !! Initialize start distribution
-            vortex = 0
-            vortex(1) = 1
+            vertex = 0
+            vertex(1) = 1
             if (write_mode == "all") then
-                call write_matrix_real(fvortex, reshape(vortex, [1, n1]))
+                call write_vec_real(fvertex, vertex, horizontal=.true.)
             end if
             
-            !! Initialize total vortex
-            total_vortex = vortex
+            !! Initialize total vertex
+            total_vertex = vertex
             
             !! Initialize entropy
-            entropy = calc_entropy(vortex)
+            entropy = calc_entropy(vertex)
             if (write_mode == "all") then
                 call write_real(fentropy, entropy)
             end if
@@ -109,7 +115,7 @@ program walker
             do kk = 0, maxval(distance)
                 do jj = 1, size(distance)
                     if (distance(jj) == kk) then
-                        prob_distance(kk+1) = prob_distance(kk+1) + vortex(jj)
+                        prob_distance(kk+1) = prob_distance(kk+1) + vertex(jj)
                     end if
                 end do
             end do
@@ -126,7 +132,7 @@ program walker
             
             !! Write amount of particle in file
             if (write_mode == "all") then
-                call write_real(fparticle, sum(vortex))
+                call write_real(fparticle, sum(vertex))
             
                 !! Create current.dat
                 open(40, file="current.dat", status="replace", form="formatted", action="write")
@@ -137,14 +143,14 @@ program walker
             end if
             
         case ("append") !! Simulate old data further
-            !! Read old vortex (particle distribution)
-            open(42, file=fvortex, status="old", form="formatted", action="read", position="append")
+            !! Read old vertex (particle distribution)
+            open(42, file=fvertex, status="old", form="formatted", action="read", position="append")
             backspace 42
-            read(42,*) (vortex(ii), ii=1, n1)
+            read(42,*) (vertex(ii), ii=1, nn)
             close(42)
             
-            !! Read old total_vortex
-            call read_vec_real(ftotal_vortex, total_vortex, vec_size=n1)
+            !! Read old total_vertex
+            call read_vec_real(ftotal_vertex, total_vertex, vec_size=nn)
             
             !! Read old total_distance
             call read_vec_real(ftotal_distance, total_distance, vec_size=size(total_distance))
@@ -163,38 +169,38 @@ program walker
             end if
             
             !! Calculate current
-            call calc_current(current, laplacian, vortex, io_rates, distance)
+            call calc_current(current, laplacian, vertex, io_rates, distance)
             if (write_mode == "all") then
                 call write_matrix_real(fcurrent, reshape(current, [1, size(recurrent)]), state_in = "old", pos_in="append")
             end if
             
             !! Calculate recurrent
-            call calc_recurrent(recurrent, laplacian, vortex, io_rates, distance)
+            call calc_recurrent(recurrent, laplacian, vertex, io_rates, distance)
             if (write_mode == "all") then
                 call write_matrix_real(frecurrent, reshape(recurrent, [1, size(recurrent)]), state_in = "old", pos_in="append")
             end if
             
-            call CRWalk(laplacian, vortex, io_rates, timestep, time_mode)
+            call CRWalk(laplacian, vertex, io_rates, timestep, time_mode)
             if (write_mode == "all") then
-                call write_matrix_real(fvortex, reshape(vortex, [1, size(vortex)]), state_in = "old", pos_in="append")
+                call write_matrix_real(fvertex, reshape(vertex, [1, size(vertex)]), state_in = "old", pos_in="append")
             end if
-            total_vortex = total_vortex + vortex    !! Integrate probability over time
+            total_vertex = total_vertex + vertex    !! Integrate probability over time
             
-            entropy = calc_entropy(vortex)    !! Calculate Entropy
+            entropy = calc_entropy(vertex)    !! Calculate Entropy
             if (write_mode == "all") then
                 call write_real(fentropy, entropy, state_in="old", pos_in="append")
             end if
             
             if (maxTimestep - ii < test_range) then
                 test_entropy(maxTimestep - ii+1) = entropy
-                test_particle(maxTimestep - ii+1) = sum(vortex)
+                test_particle(maxTimestep - ii+1) = sum(vertex)
             end if
             
             !! calculate probability dependent on distance from start
             do kk = 0, maxval(distance)
                 do jj = 1, size(distance)
                     if (distance(jj) == kk) then
-                        prob_distance(kk+1) = prob_distance(kk+1) + vortex(jj)
+                        prob_distance(kk+1) = prob_distance(kk+1) + vertex(jj)
                     end if
                 end do
             end do
@@ -210,17 +216,17 @@ program walker
             end if
             prob_distance = 0
             if (write_mode == "all") then
-                call write_real(fparticle, sum(vortex), state_in="old", pos_in="append") !! Write amount of particle in file
+                call write_real(fparticle, sum(vertex), state_in="old", pos_in="append") !! Write amount of particle in file
             end if
         end do
         write(*,"(A)") "] Done."
         
         !! Write results into files
-        call write_x(ftotal_vortex, total_vortex)
+        call write_x(ftotal_vertex, total_vertex)
         call write_x(ftotal_distance, total_distance)
-        call write_x(fend_vortex, vortex)
+        call write_x(fend_vertex, vertex)
         call write_real(fend_entropy, entropy)
-        call write_real(fend_particle, sum(vortex))
+        call write_real(fend_particle, sum(vertex))
         call write_vec_real(fend_current, current)
         call write_vec_real(fend_recurrent, recurrent)
         if (write_mode == "end") then
@@ -240,7 +246,7 @@ program walker
             write(*,*) "Could not verify steady state due short simulation time."
         end if
         
-    case ("QW", "QSW") !! Quantum Walkdensity_matrix
+    case ("QW", "QSW") !! Quantum Walk
         test_entropy = 0.0_dp
         test_particle = 0.0_dp
         
@@ -248,49 +254,89 @@ program walker
         complex_diag = .false.
         neg_diag = .false.
         not_hermitian = .false.
+        complex_trace = .false.
+        not_norm = .false.
+        correct = .false.
         
         !! Creates new eigenvalue file
         open(43, file=feigenval, status="replace", form="formatted", action="write")
         close(43)
 
-        
         !! Read hamiltonian
         call read_matrix_complex(fhamiltonian, hamiltonian)
-        n1 = size(hamiltonian, dim=1)
+        nn = size(hamiltonian, dim=1)
         
+        allocate(qcurrent(nn-1))
+        qcurrent = 0
+        call write_vec_complex(fcurrent, qcurrent, state_in="replace", horizontal=.true.)
+        !! Test hermitian of hamiltonian
+            not_hermitian = .not. (is_hermitian(hamiltonian))
+            if (not_hermitian .eqv. .true.) then
+                write(60, "(A)") "Warning: not_hermitian hamiltonian"
+            end if
+
         !! Read initial density matrix
         call read_matrix_complex("density_matrix.inp", density_matrix)
+        
+         !! Initial Particle Numer
         trace = trace_complex(density_matrix)
+        call write_real(fparticle, real(trace))
+        call write_complex(ftrace, trace)
+        if (aimag(trace) /= 0.0_dp) then
+            write(60, "(A,I0)") "Warning: Trace complex in ", 0
+            complex_trace = .true.
+        end if
         
         !! Creates Vertex
-        allocate(vortex(n1))
-        do ii=1,n1
-            vortex(ii) = real(density_matrix(ii,ii), dp)
+        allocate(vertex(nn))
+        do ii=1,nn
+            vertex(ii) = real(density_matrix(ii,ii), dp)
         end do
+        call write_vec_real(fvertex, vertex, horizontal=.true.)
+!         density_matrix = density_matrix/trace
+        density_matrix = density_matrix/real(trace)
         
-        call write_vec_real(fvortex, vortex, horizontal=.true.)
+        !! Test trace one
+            if (real(trace_complex(density_matrix), dp) /= 1.0_dp) then
+                write(60, "(A,I0)") "Warning: Trace not one in ", 0
+                not_norm = .true.
+                density_matrix = density_matrix/real(trace)
+            end if
+            
+        !! Test hermitian of density matrix
+            not_hermitian = .not. (is_hermitian(density_matrix))
+            if (not_hermitian .eqv. .true.) then
+                write(60, "(A,I0)") "Warning: not_hermitian in ", 0
+            end if
         
         !! Read Environment term if QSW mode
         if (walk_mode == "QSW") then
             call read_array_complex(fenvironment, environment)
-            if  ( (size(environment, dim=1) /= n1 ) .or. (size(environment, dim=2) /= n1) ) then
+            if  ( (size(environment, dim=1) /= nn ) .or. (size(environment, dim=2) /= nn) ) then
                 write(*,*) "Error: Wrong size in environment. Have to be n x n x ?"
                 stop
             end if
         end if
         
+        !! Initial Entropy calculation
+        entropy = vonNeumann_entropy(density_matrix)
+        call write_real(fentropy, entropy, state_in="replace")
+        call write_vec_complex(fdensity, reshape(density_matrix, [(nn**2)]), state_in = "replace", horizontal=.true.)
+        
+!          hamiltonian = matrix_exp(cmplx(0.0_dp, -timestep, dp), hamiltonian)
+!         hamiltonian = hamilton_exp(cmplx(0.0_dp, timestep, dp), hamiltonian)
+!         hamiltonian = another_func(timestep)
+        if (nn == 5) then
+            hamiltonian = five(timestep)
+        else
+            hamiltonian = hamilton_exp(cmplx(0.0_dp, -timestep, dp), hamiltonian)
+        end if
+        p_env = exp(-1/dec_time)
+        
         !! Initialize Progress bar    
         write(*,"(A)") "____________-________-_________-"
         write(*,"(A)", advance="no") "Start QW: [" !! start progress bar
         counter = 1
-        
-        !! Initial Entropy calculation
-        entropy = vonNeumann_entropy((density_matrix/trace), timestep)
-        call write_real(fentropy, entropy, state_in="replace")
-        call write_vec_complex(fdensity, reshape(density_matrix, [(n1**2)]), state_in = "replace", horizontal=.true.)
-        
-        !! Initial Particle Numer
-        call write_real(fparticle, real(trace_complex(density_matrix)) )
         
         !! Do Quantum (Stochastic) Walk
         do ii = 1, maxTimestep
@@ -302,38 +348,84 @@ program walker
             
             !! 1-timestep of Quantum Walk
             if (walk_mode == "QW") then
-                call QWalk(hamiltonian, density_matrix, timestep, io_rates, correction)
+                call QWalk(hamiltonian, density_matrix, timestep, qcurrent, p_env)
             else 
-                call QWalk(hamiltonian, density_matrix, timestep, io_rates, correction, environment)
+                call QWalk(hamiltonian, density_matrix, timestep, qcurrent, p_env, environment)
             end if
             
-            call write_vec_complex(fdensity, reshape(density_matrix, [(n1**2)]), state_in="old", &
-                                   &pos_in = "append", horizontal=.true.)
-           
-            !! Test hermitian of density matrix
-            not_hermitian = .not. (is_hermitian(density_matrix))
-            !! Writes Particle Number
-            trace = trace_complex(density_matrix)
-            call write_real(fparticle, real(trace), state_in="old", pos_in="append")
-            
-             !! Calculate and write vortex
-            do kk=1,n1
-                if (real(density_matrix(kk,kk)) < 0.0_dp) then
+            call write_vec_complex(fcurrent, qcurrent, state_in ="old", pos_in="append", horizontal=.true.)
+            !! Test negative diag and complex diag elements
+            do jj = 1, nn
+                if (real(density_matrix(jj,jj)) < 0.0_dp) then
+                    correct = .true.
+                    density_matrix(jj,jj) = (0.0_dp, 0.0_dp)
+                    write(60, "(A,I0)") "Warning: neg_diag in ", ii
                     neg_diag = .true.
                 end if
-                if (aimag(density_matrix(kk,kk)) /= 0.0_dp) then
+                if (aimag(density_matrix(jj,jj)) /= 0.0_dp) then
+                    density_matrix(jj,jj) = cmplx(real(density_matrix(jj,jj)), 0.0_dp, dp)
+                    write(60, "(A,I0)") "Warning: Diag complex in ", ii
                     complex_diag = .true.
                 end if
-                vortex(kk) = real(density_matrix(kk,kk), dp)
             end do
-            call write_vec_real(fvortex, vortex, state_in="old", pos_in="append", horizontal=.true.)
+            if (correct) then
+                density_matrix = density_matrix/real(trace_complex(density_matrix), dp)
+                correct =.false.
+            end if
+        
+            !! Test trace one
+            if (abs(real(trace_complex(density_matrix), dp) - 1.0_dp) >= err) then
+                write(60, "(A,I0)") "Warning: Trace not one in ", ii
+                not_norm = .true.
+                density_matrix = density_matrix/real(trace_complex(density_matrix),dp)
+            end if
+!             trace = complex(anint(real(trace)), dp)
+            !! Adding Particles
+            density_matrix = density_matrix*real(trace)
+            density_matrix(1,1) = density_matrix(1,1) + cmplx(io_rates(1)*timestep, 0.0_dp, dp)
             
-            entropy = vonNeumann_entropy((density_matrix/trace), timestep, neg_ev)
+            if (real(density_matrix(nn,nn) + io_rates(2)*timestep) >= 0.0_dp) then
+                density_matrix(nn,nn) = density_matrix(nn,nn) + cmplx(io_rates(2)*timestep, 0.0_dp, dp)
+!                 density_matrix(nn,nn) = (0.0_dp, 0.0_dp)
+            end if
+            
+            !! Writes Particle Number
+            trace = trace_complex(density_matrix)
+            if (aimag(trace) /= 0.0_dp) then
+                write(60, "(A,I0)") "Warning: Trace complex in ", ii
+                complex_trace = .true.
+            end if
+            call write_real(fparticle, real(trace), state_in="old", pos_in="append")
+            call write_complex(ftrace, trace, state_in="old", pos_in="append")
+            density_matrix = density_matrix/real(trace)
+            
+            call write_vec_complex(fdensity, reshape(density_matrix, [(nn**2)]), state_in="old", &
+                                   &pos_in = "append", horizontal=.true.)
+           
+            
+            !! Test hermitian of density matrix
+            not_hermitian = .not. (is_hermitian(density_matrix))
+            if (not_hermitian .eqv. .true.) then
+                write(60, "(A,I0)") "Warning: not_hermitian in ", ii
+            end if
+            
+             !! Calculate and write vertex
+            do kk=1,nn
+                vertex(kk) = real(density_matrix(kk,kk), dp)*real(trace)
+            end do
+            call write_vec_real(fvertex, vertex, state_in="old", pos_in="append", horizontal=.true.)
+!             entropy = calc_entropy(vertex)
+            
+            entropy = vonNeumann_entropy(density_matrix, neg_ev)
+
+            if (neg_ev .eqv. .true.) then
+                write(60, "(A,I0)") "Warning: neg_ev in ", ii
+            end if
             call write_real(fentropy, entropy, state_in="old", pos_in="append")
             
             if (maxTimestep - ii < test_range) then
                 test_entropy(maxTimestep - ii+1) = entropy
-                test_particle(maxTimestep - ii+1) = sum(vortex)
+                test_particle(maxTimestep - ii+1) = sum(vertex)
             end if
             
         end do !! End Quantum Walk
@@ -351,13 +443,19 @@ program walker
         if (not_hermitian .eqv. .true.) then
             write(*,*) "Warning: Some density matrices are non hermitian."
         end if
+        if (complex_trace .eqv. .true.) then
+            write(*,*) "Warning: Some traces are complex."
+        end if
+        if (not_norm .eqv. .true.) then
+            write(*,*) "Warning: Some traces are not one."
+        end if
         
         !! Look for reaching steady state
         if (maxTimestep >= test_range) then
-            if (any(test_entropy /= test_entropy(1))) then
+            if (any(abs(test_entropy - test_entropy(1)) >= err)) then
                 write(*,*) "Entropy did not reach steady state!"
             end if
-            if (any(test_particle /= test_particle(1))) then
+            if (any(abs(test_particle - test_particle(1)) >= err)) then
                 write(*,*) "Particle did not reach steady state!"
             end if
         else
@@ -367,4 +465,6 @@ program walker
         
     end select
 
+    !! Close error.log
+    close(60)
 end program walker

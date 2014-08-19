@@ -350,7 +350,7 @@ contains
         end if
         
         open(18, file=data, status=state, form="formatted", action="write", position=pos)
-        write(18, "(ES15.6)") scalar
+        write(18, "(ES24.14)") scalar
         close(18)     
         
     end subroutine write_real
@@ -390,7 +390,7 @@ contains
         end if
         
         open(18, file=data, status=state, form="formatted", action="write", position=pos)
-        write(18, "(ES15.6, ES15.6)") scalar
+        write(18, "(ES20.12, ES20.12)") scalar
         close(18)     
         
     end subroutine write_complex
@@ -416,7 +416,7 @@ contains
         nn = size(vec)
         
         if (present(state_in) .eqv. .true.) then
-            if ((state_in /= "new") .or. (state_in /= "old") .or. (state_in /= "replace") .or. (state_in /= "scratch")) then
+            if ((state_in /= "new") .and. (state_in /= "old") .and. (state_in /= "replace") .and. (state_in /= "scratch")) then
                 write(*,*) "Wrong file status in write_vec_int. End program."
                 stop
             end if
@@ -441,7 +441,7 @@ contains
             write(19, "(I0)") nn
         end if
         
-        if ((present(size_out) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
+        if ((present(horizontal) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
             write(form, "(A1, I0, A)") "(", (nn), "(I15, 2X))"
             write(19, form) (vec(ii), ii=1, nn)
         else
@@ -452,6 +452,64 @@ contains
         
         close(19)
     end subroutine write_vec_int
+    
+    !> Writes a (integer) vector into a file
+    !!
+    !! \param data          file to write in
+    !! \param vec           vector which is to write
+    !! \param size_out      should the size of the vector be written in the first line of the file
+    !! \param state_in      write in new or old file or replace existing file
+    !! \param pos_in        write from begin of the file or append to it
+    !! \param horizontal    should the vector be written horizontal instead of vertical?
+    !!
+    subroutine write_vec_intdp(data, vec, size_out, state_in, pos_in, horizontal)
+
+        integer :: ii, nn
+        character(*), intent(in) :: data
+        character(30) :: form, state, pos
+        integer(dp), intent(in) :: vec(:) 
+        logical, optional, intent(in) :: size_out, horizontal
+        character(*), optional, intent(in) :: state_in, pos_in
+        
+        nn = size(vec)
+        
+        if (present(state_in) .eqv. .true.) then
+            if ((state_in /= "new") .and. (state_in /= "old") .and. (state_in /= "replace") .and. (state_in /= "scratch")) then
+                write(*,*) "Wrong file status in write_vec_int. End program."
+                stop
+            end if
+            state = state_in
+        else
+            state = "replace"
+        end if
+        
+        if (present(pos_in) .eqv. .true.) then
+            if (( pos_in == "append") .or. (pos_in == "rewind") .or. (pos_in == "asis")) then
+                pos = pos_in
+            else
+                write(*,*) "Error: Wrong position input in write_vec_int. Stop program."
+            end if
+        else
+            pos = "rewind"
+        end if
+        
+        open(19, file=data, status=state, form="formatted", action="write", position=pos)
+        
+        if ((present(size_out) .eqv. .true.) .and. (size_out .eqv. .true. )) then
+            write(19, "(I0)") nn
+        end if
+        
+        if ((present(horizontal) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
+            write(form, "(A1, I0, A)") "(", (nn), "(I15, 2X))"
+            write(19, form) (vec(ii), ii=1, nn)
+        else
+            do ii = 1, nn
+            write(19, "(A15)") vec(ii)
+            end do
+        end if
+        
+        close(19)
+    end subroutine write_vec_intdp
     
     !> Writes a (real) vector into a file
     !!
@@ -558,11 +616,11 @@ contains
         end if
         
         if ((present(horizontal) .eqv. .true.) .and. (horizontal .eqv. .true.)) then
-            write(form, "(A1, I0, A)") "(", (nn), "(2(ES15.6, 2X)))"
+            write(form, "(A1, I0, A)") "(", (nn), "(2(ES20.12, 2X)))"
             write(20, form) (vec(ii), ii=1, nn)
         else
             do ii = 1, nn
-                write(20, "(2(ES15.6))") vec(ii)
+                write(20, "(2(ES20.12))") vec(ii)
             end do
         end if
         
@@ -741,12 +799,12 @@ contains
         end if
 
         if ((present(lineNr) .eqv. .true. ) .and. ( lineNr .eqv. .true.)) then
-            write(form, "(A3, I0, A)") "(I,", (nn), "(2(ES15.6, 2X)))"
+            write(form, "(A3, I0, A)") "(I,", (nn), "(2(ES20.12, 2X)))"
             do ii = 1, nn
             write(22, form) ii, (array(ii,jj), jj=1, mm)
             end do
         else 
-            write(form, "(A1, I0, A)") "(", (mm), "(2(ES15.6, 2X)))"
+            write(form, "(A1, I0, A)") "(", (mm), "(2(ES20.12, 2X)))"
             do ii = 1, nn
             write(22, form) (array(ii,jj), jj=1, mm)
             end do

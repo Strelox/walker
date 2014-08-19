@@ -13,7 +13,7 @@ BLAS_LIBDIR = /home/frank/lib/BLAS
 BLAS = blas
 
 # Object files
-OBJS = accuracy.o io.o config.o random.o randomWalk.o quantumWalk.o networks.o walker.o
+OBJS = accuracy.o io.o config.o random.o randomWalk.o quantumWalk.o networks.o expokit.o diag.o walker.o
 
 
 walker: $(OBJS)
@@ -24,6 +24,10 @@ walker: $(OBJS)
 
 accuracy.o:
 
+expokit.o: accuracy.o 
+
+diag.o: accuracy.o 
+
 io.o: accuracy.o
 
 config.o: accuracy.o
@@ -32,7 +36,7 @@ random.o:
 
 randomWalk.o: accuracy.o io.o random.o
 
-quantumWalk.o: accuracy.o io.o random.o
+quantumWalk.o: accuracy.o io.o random.o expokit.o diag.o
 
 networks.o: accuracy.o io.o random.o
 

@@ -6,7 +6,8 @@
 module accuracy
   implicit none
 
-  integer, parameter :: dp = selected_real_kind(15, 300)
-  real, parameter :: err = 1e-12
+!   integer, parameter :: dp = selected_real_kind(15, 300)
+  integer, parameter :: dp = selected_real_kind(33,4931)
+    real(dp), parameter :: err = 1e-20
 
 end module accuracy

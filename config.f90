@@ -16,10 +16,10 @@ contains
     !! \param timestep          The size of a timestep.
     !! \param simulation_mode   New simulation or append to old data.
     !!
-    subroutine read_config(data, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode, correction)
+    subroutine read_config(data, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode, dec_time)
         character(*), intent(in) :: data
         integer, intent(out) :: maxTimestep
-        real(dp), intent(out) :: timestep, correction
+        real(dp), intent(out) :: timestep, dec_time
         real(dp), intent(out) :: io_rates(2)
         character(*), intent(out) :: walk_mode, time_mode, simulation_mode, write_mode
         integer :: status
@@ -93,14 +93,11 @@ contains
             stop
         end if
         
-        !! Read correction
-        read(14,*, iostat=status) correction
+        !! Read dec_time
+        read(14,*, iostat=status) dec_time
         if (status /= 0) then
-             write(*,*) "Error: Wrong correction format in config file! End program."
+             write(*,*) "Error: Wrong dec_time format in config file! End program."
              stop
-        else if ( (correction < 0.0_dp) .or. (correction > 1.0_dp)) then
-            write(*,*) "Error: Dummy correction in config file! End program."
-            stop
         end if
         
         close(14)
