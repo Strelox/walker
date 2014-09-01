@@ -339,7 +339,7 @@ program walker
         
         hamiltonian = man_exp(hamiltonian, cmplx(0.0_dp, -timestep, dp))
 !         hamiltonian = special_2(cmplx(-timestep, 0.0_dp, dp))
-        p_env = exp(-1/dec_time)
+        p_env = 1 - exp(-1/dec_time)
         
         selectcase (simulation_mode)
         case ("standard")
