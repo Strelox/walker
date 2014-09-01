@@ -1,3 +1,35 @@
+!     Copyright 2014 Frank Stuckenberg
+!
+!     This file is part of walker.
+! 
+!     walker is free software: you can redistribute it and/or modify
+!     it under the terms of the GNU Affero General Public License as published by
+!     the Free Software Foundation, either version 3 of the License, or
+!     (at your option) any later version.
+! 
+!     walker is distributed in the hope that it will be useful,
+!     but WITHOUT ANY WARRANTY; without even the implied warranty of
+!     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!     GNU Affero General Public License for more details.
+! 
+!     You should have received a copy of the GNU Affero General Public License
+!     along with walker.  If not, see <http://www.gnu.org/licenses/>.
+! 
+!     Diese Datei ist Teil von walker.
+! 
+!     walker ist Freie Software: Sie können es unter den Bedingungen
+!     der GNU Affero General Public License, wie von der Free Software Foundation,
+!     Version 3 der Lizenz oder (nach Ihrer Wahl) jeder späteren
+!     veröffentlichten Version, weiterverbreiten und/oder modifizieren.
+! 
+!     walker wird in der Hoffnung, dass es nützlich sein wird, aber
+!     OHNE JEDE GEWÄHELEISTUNG, bereitgestellt; sogar ohne die implizite
+!     Gewährleistung der MARKTFÄHIGKEIT oder EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.
+!     Siehe die GNU Affero General Public License für weitere Details.
+! 
+!     Sie sollten eine Kopie der GNU Affero General Public License zusammen mit diesem
+!     Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
+
 !> Let a random (quantum) walker go through a network.
 !!
 !! \details The provided laplacian matrix of the network will be used to let
@@ -41,6 +73,7 @@ program walker
     character(*), parameter :: fenvironment = "environment.inp"
     character(*), parameter :: flog = "error.log"
     character(*), parameter :: ftrace = "trace.dat"
+    character(*), parameter :: fend_density = "last_density_matrix.inp"
     
     !! Declarations
     integer :: ii, jj, kk, ll, maxTimestep, nn, counter
@@ -49,8 +82,8 @@ program walker
     real(dp), allocatable :: vertex(:), total_vertex(:), prob_distance(:), total_distance(:)
     real(dp), allocatable :: current(:), recurrent(:), laplacian(:,:)
     real(dp) :: test_particle(test_range), test_entropy(test_range)
-    character(10) :: walk_mode, time_mode, simulation_mode, write_mode
-    complex(dp), allocatable :: hamiltonian(:,:), density_matrix(:,:), environment(:,:,:), qcurrent(:)
+    character(10) :: walk_mode, simulation_mode, write_mode
+    complex(dp), allocatable :: hamiltonian(:,:), density_matrix(:,:), environment(:,:,:)
     complex(dp) :: trace
     logical :: neg_ev, complex_diag, neg_diag, not_hermitian, complex_trace, not_norm, correct
     
@@ -58,7 +91,7 @@ program walker
     open(60, file=flog, status="replace", form="formatted", action="write")
     
     !! Read Configuration
-    call read_config(fconfig, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode, dec_time)
+    call read_config(fconfig, maxTimestep, walk_mode, io_rates, timestep, simulation_mode, write_mode, dec_time)
     
     !! Change io_rates per timestep to io_rate
     io_rates = io_rates/timestep
@@ -180,7 +213,7 @@ program walker
                 call write_matrix_real(frecurrent, reshape(recurrent, [1, size(recurrent)]), state_in = "old", pos_in="append")
             end if
             
-            call CRWalk(laplacian, vertex, io_rates, timestep, time_mode)
+            call CRWalk(laplacian, vertex, io_rates, timestep)
             if (write_mode == "all") then
                 call write_matrix_real(fvertex, reshape(vertex, [1, size(vertex)]), state_in = "old", pos_in="append")
             end if
@@ -257,18 +290,15 @@ program walker
         complex_trace = .false.
         not_norm = .false.
         correct = .false.
-        
-        !! Creates new eigenvalue file
-        open(43, file=feigenval, status="replace", form="formatted", action="write")
-        close(43)
 
         !! Read hamiltonian
         call read_matrix_complex(fhamiltonian, hamiltonian)
         nn = size(hamiltonian, dim=1)
         
-        allocate(qcurrent(nn-1))
-        qcurrent = 0
-        call write_vec_complex(fcurrent, qcurrent, state_in="replace", horizontal=.true.)
+        allocate(current(nn))
+        current = 0.0_dp
+        
+        
         !! Test hermitian of hamiltonian
             not_hermitian = .not. (is_hermitian(hamiltonian))
             if (not_hermitian .eqv. .true.) then
@@ -280,8 +310,7 @@ program walker
         
          !! Initial Particle Numer
         trace = trace_complex(density_matrix)
-        call write_real(fparticle, real(trace))
-        call write_complex(ftrace, trace)
+      
         if (aimag(trace) /= 0.0_dp) then
             write(60, "(A,I0)") "Warning: Trace complex in ", 0
             complex_trace = .true.
@@ -292,17 +321,7 @@ program walker
         do ii=1,nn
             vertex(ii) = real(density_matrix(ii,ii), dp)
         end do
-        call write_vec_real(fvertex, vertex, horizontal=.true.)
-!         density_matrix = density_matrix/trace
-        density_matrix = density_matrix/real(trace)
         
-        !! Test trace one
-            if (real(trace_complex(density_matrix), dp) /= 1.0_dp) then
-                write(60, "(A,I0)") "Warning: Trace not one in ", 0
-                not_norm = .true.
-                density_matrix = density_matrix/real(trace)
-            end if
-            
         !! Test hermitian of density matrix
             not_hermitian = .not. (is_hermitian(density_matrix))
             if (not_hermitian .eqv. .true.) then
@@ -318,20 +337,28 @@ program walker
             end if
         end if
         
-        !! Initial Entropy calculation
-        entropy = vonNeumann_entropy(density_matrix)
-        call write_real(fentropy, entropy, state_in="replace")
-        call write_vec_complex(fdensity, reshape(density_matrix, [(nn**2)]), state_in = "replace", horizontal=.true.)
-        
-!          hamiltonian = matrix_exp(cmplx(0.0_dp, -timestep, dp), hamiltonian)
-!         hamiltonian = hamilton_exp(cmplx(0.0_dp, timestep, dp), hamiltonian)
-!         hamiltonian = another_func(timestep)
-        if (nn == 5) then
-            hamiltonian = five(timestep)
-        else
-            hamiltonian = hamilton_exp(cmplx(0.0_dp, -timestep, dp), hamiltonian)
-        end if
+        hamiltonian = man_exp(hamiltonian, cmplx(0.0_dp, -timestep, dp))
+!         hamiltonian = special_2(cmplx(-timestep, 0.0_dp, dp))
         p_env = exp(-1/dec_time)
+        
+        selectcase (simulation_mode)
+        case ("standard")
+
+             !! Creates new eigenvalue file
+            open(43, file=feigenval, status="replace", form="formatted", action="write")
+            close(43)
+            
+            !! Initial Entropy calculation
+            entropy = vonNeumann_entropy(density_matrix)
+            call write_vec_real(fcurrent, current, state_in="replace", horizontal=.true.)
+            call write_real(fparticle, real(trace))
+            call write_complex(ftrace, trace)
+            call write_vec_real(fvertex, vertex, horizontal=.true.)
+            call write_real(fentropy, entropy, state_in="replace")
+            call write_vec_complex(fdensity, reshape(density_matrix, [(nn**2)]), state_in = "replace", horizontal=.true.)
+       case ("append")
+            call read_matrix_complex(fend_density, density_matrix)
+        end select
         
         !! Initialize Progress bar    
         write(*,"(A)") "____________-________-_________-"
@@ -348,12 +375,13 @@ program walker
             
             !! 1-timestep of Quantum Walk
             if (walk_mode == "QW") then
-                call QWalk(hamiltonian, density_matrix, timestep, qcurrent, p_env)
+                call QWalk(hamiltonian, density_matrix, timestep, current, p_env)
             else 
-                call QWalk(hamiltonian, density_matrix, timestep, qcurrent, p_env, environment)
+                call QWalk(hamiltonian, density_matrix, timestep, current, p_env, environment)
             end if
             
-            call write_vec_complex(fcurrent, qcurrent, state_in ="old", pos_in="append", horizontal=.true.)
+            call write_vec_real(fcurrent, current, state_in ="old", pos_in="append", horizontal=.true.)
+            
             !! Test negative diag and complex diag elements
             do jj = 1, nn
                 if (real(density_matrix(jj,jj)) < 0.0_dp) then
@@ -368,25 +396,12 @@ program walker
                     complex_diag = .true.
                 end if
             end do
-            if (correct) then
-                density_matrix = density_matrix/real(trace_complex(density_matrix), dp)
-                correct =.false.
-            end if
-        
-            !! Test trace one
-            if (abs(real(trace_complex(density_matrix), dp) - 1.0_dp) >= err) then
-                write(60, "(A,I0)") "Warning: Trace not one in ", ii
-                not_norm = .true.
-                density_matrix = density_matrix/real(trace_complex(density_matrix),dp)
-            end if
-!             trace = complex(anint(real(trace)), dp)
+            
             !! Adding Particles
-            density_matrix = density_matrix*real(trace)
             density_matrix(1,1) = density_matrix(1,1) + cmplx(io_rates(1)*timestep, 0.0_dp, dp)
             
             if (real(density_matrix(nn,nn) + io_rates(2)*timestep) >= 0.0_dp) then
                 density_matrix(nn,nn) = density_matrix(nn,nn) + cmplx(io_rates(2)*timestep, 0.0_dp, dp)
-!                 density_matrix(nn,nn) = (0.0_dp, 0.0_dp)
             end if
             
             !! Writes Particle Number
@@ -397,7 +412,6 @@ program walker
             end if
             call write_real(fparticle, real(trace), state_in="old", pos_in="append")
             call write_complex(ftrace, trace, state_in="old", pos_in="append")
-            density_matrix = density_matrix/real(trace)
             
             call write_vec_complex(fdensity, reshape(density_matrix, [(nn**2)]), state_in="old", &
                                    &pos_in = "append", horizontal=.true.)
@@ -411,10 +425,9 @@ program walker
             
              !! Calculate and write vertex
             do kk=1,nn
-                vertex(kk) = real(density_matrix(kk,kk), dp)*real(trace)
+                vertex(kk) = real(density_matrix(kk,kk), dp)
             end do
             call write_vec_real(fvertex, vertex, state_in="old", pos_in="append", horizontal=.true.)
-!             entropy = calc_entropy(vertex)
             
             entropy = vonNeumann_entropy(density_matrix, neg_ev)
 
@@ -430,6 +443,9 @@ program walker
             
         end do !! End Quantum Walk
         write(*,"(A)") "] Done."
+        
+        !! Save the last state of the density matrix
+        call write_matrix_complex(fend_density, density_matrix)
         
         if (complex_diag .eqv. .true.) then 
             write(*,*) "Warning: Some probabilities are complex."

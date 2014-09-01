@@ -1,3 +1,35 @@
+!     Copyright 2014 Frank Stuckenberg
+!
+!     This file is part of walker.
+! 
+!     walker is free software: you can redistribute it and/or modify
+!     it under the terms of the GNU Affero General Public License as published by
+!     the Free Software Foundation, either version 3 of the License, or
+!     (at your option) any later version.
+! 
+!     walker is distributed in the hope that it will be useful,
+!     but WITHOUT ANY WARRANTY; without even the implied warranty of
+!     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!     GNU Affero General Public License for more details.
+! 
+!     You should have received a copy of the GNU Affero General Public License
+!     along with walker.  If not, see <http://www.gnu.org/licenses/>.
+! 
+!     Diese Datei ist Teil von walker.
+! 
+!     walker ist Freie Software: Sie können es unter den Bedingungen
+!     der GNU Affero General Public License, wie von der Free Software Foundation,
+!     Version 3 der Lizenz oder (nach Ihrer Wahl) jeder späteren
+!     veröffentlichten Version, weiterverbreiten und/oder modifizieren.
+! 
+!     walker wird in der Hoffnung, dass es nützlich sein wird, aber
+!     OHNE JEDE GEWÄHELEISTUNG, bereitgestellt; sogar ohne die implizite
+!     Gewährleistung der MARKTFÄHIGKEIT oder EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.
+!     Siehe die GNU Affero General Public License für weitere Details.
+! 
+!     Sie sollten eine Kopie der GNU Affero General Public License zusammen mit diesem
+!     Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
+
 !> Provides routines to read a Configuration file
 !!
 module config
@@ -11,17 +43,16 @@ contains
     !! \param data              File containing the configuration.
     !! \param maxTimestep       The maximum amount of timesteps that will be simulated.
     !! \param walk_mode         Mode of the simulated walk (CRW, QW or QSW).
-    !! \param time_mode         The time mode of the simulation (either discrete or continous).
     !! \param io_rates          Input/Output rates.
     !! \param timestep          The size of a timestep.
     !! \param simulation_mode   New simulation or append to old data.
     !!
-    subroutine read_config(data, maxTimestep, walk_mode, time_mode, io_rates, timestep, simulation_mode, write_mode, dec_time)
+    subroutine read_config(data, maxTimestep, walk_mode, io_rates, timestep, simulation_mode, write_mode, dec_time)
         character(*), intent(in) :: data
         integer, intent(out) :: maxTimestep
         real(dp), intent(out) :: timestep, dec_time
         real(dp), intent(out) :: io_rates(2)
-        character(*), intent(out) :: walk_mode, time_mode, simulation_mode, write_mode
+        character(*), intent(out) :: walk_mode, simulation_mode, write_mode
         integer :: status
 
         open(14, file=data, status="old", form="formatted", action="read")
@@ -46,16 +77,6 @@ contains
             stop
         end if
 
-        !! Read time mode
-        read(14,*, iostat=status) time_mode
-        if (status /= 0) then
-             write(*,*) "Error: Wrong time_mode format in config file! End program."
-             stop
-        else if ((time_mode /= "discrete") .and. (time_mode /= "continous")) then
-            write(*,*) "Error: Unknown time mode in config file! End program."
-            stop
-        end if
-        
         !! Read input/output rates
         read(14,*, iostat=status) io_rates(1), io_rates(2)
         if (status /= 0) then

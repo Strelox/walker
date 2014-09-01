@@ -1,12 +1,41 @@
+!     Copyright 2014 Frank Stuckenberg
+!
+!     This file is part of walker.
+! 
+!     walker is free software: you can redistribute it and/or modify
+!     it under the terms of the GNU Affero General Public License as published by
+!     the Free Software Foundation, either version 3 of the License, or
+!     (at your option) any later version.
+! 
+!     walker is distributed in the hope that it will be useful,
+!     but WITHOUT ANY WARRANTY; without even the implied warranty of
+!     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!     GNU Affero General Public License for more details.
+! 
+!     You should have received a copy of the GNU Affero General Public License
+!     along with walker.  If not, see <http://www.gnu.org/licenses/>.
+! 
+!     Diese Datei ist Teil von walker.
+! 
+!     walker ist Freie Software: Sie können es unter den Bedingungen
+!     der GNU Affero General Public License, wie von der Free Software Foundation,
+!     Version 3 der Lizenz oder (nach Ihrer Wahl) jeder späteren
+!     veröffentlichten Version, weiterverbreiten und/oder modifizieren.
+! 
+!     walker wird in der Hoffnung, dass es nützlich sein wird, aber
+!     OHNE JEDE GEWÄHELEISTUNG, bereitgestellt; sogar ohne die implizite
+!     Gewährleistung der MARKTFÄHIGKEIT oder EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.
+!     Siehe die GNU Affero General Public License für weitere Details.
+! 
+!     Sie sollten eine Kopie der GNU Affero General Public License zusammen mit diesem
+!     Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
+
 !> Provides routines for the quantum walk
 !!
 module quantumWalk
     use accuracy
     use io
-    use random
-    use expokit
     use f95_lapack
-    use diag
     implicit none
     
     
@@ -23,8 +52,9 @@ contains
         !! Declarations
         real(dp), intent(in) :: p_env, timestep
         complex(dp), intent(in) :: dev(:,:)
-        complex(dp), intent(inout) :: density_matrix(:,:), current(:)
-        integer :: nn, ii
+        complex(dp), intent(inout) :: density_matrix(:,:)
+        real(dp), intent(inout) :: current(:)
+        integer :: nn, ii, jj
         complex(dp), allocatable :: identity(:,:), temp(:,:)
         complex(dp), optional, intent(in) :: environment(:,:,:)
 
@@ -47,9 +77,30 @@ contains
                         &+ (1-p_env)*environment_term(temp, environment)
         
         identity = (temp - density_matrix)/timestep
+
+        current = 0.0_dp
         do ii = 1, nn-1
-            current(ii) = identity(ii,ii+1)
+            do jj = 1, ii
+                current(ii) = current(ii) - real(identity(jj,jj)) - aimag(identity(jj,jj))
+            end do
         end do
+        
+!         current(1) = -0.5_dp*real(identity(1,1))
+!         current(2) = -0.5_dp*real(identity(1,1))
+!         current(3) = -0.5_dp*real(identity(1,1)) - aimag(identity(2,2))
+!         current(4) = -0.5_dp*real(identity(1,1)) - aimag(identity(3,3))
+!         current(5) = -0.5_dp*real(identity(1,1)) - aimag(identity(2,2)) - real(identity(4,4)) - aimag(identity(4,4))
+!         current(6) = -0.5_dp*real(identity(1,1)) - aimag(identity(3,3)) - real(identity(5,5)) - aimag(identity(5,5))
+    
+!         current(1) = -1.0_dp/3*real(identity(1,1))
+!         current(2) = -1.0_dp/3*real(identity(1,1))
+!         current(3) = -1.0_dp/3*real(identity(1,1))
+!         current(4) = -1.0_dp/3*real(identity(1,1)) - aimag(identity(2,2))
+!         current(5) = -1.0_dp/3*real(identity(1,1)) - aimag(identity(3,3))
+!         current(6) = -1.0_dp/3*real(identity(1,1)) - aimag(identity(4,4))
+!         current(7) = -1.0_dp/3*real(identity(1,1)) - aimag(identity(2,2)) - real(identity(5,5)) - aimag(identity(5,5))
+!         current(8) = -1.0_dp/3*real(identity(1,1)) - aimag(identity(3,3)) - real(identity(6,6)) - aimag(identity(6,6))
+!         current(9) = -1.0_dp/3*real(identity(1,1)) - aimag(identity(4,4)) - real(identity(7,7)) - aimag(identity(7,7))
         
         density_matrix = temp
     end subroutine QWalk
@@ -103,11 +154,10 @@ contains
         !! Calculation of the eigenvectors and eigenvalues
         eigenvec = density_matrix
         eigenval = 0.0_dp
-        dev = cmplx(density_matrix, kind=ap)
-
-!         call la_heev(eigenvec, eigenval, JOBZ= "V", INFO=test)
+        dev = cmplx( (density_matrix/trace_complex(density_matrix)), kind=ap)
+        
         call zgesvd_f95(A = dev, S= singular, U=left, VT=right, INFO=info)
-!         eigenval = anint(eigenval/err)*err
+
         
         if (info /= 0) then
             vonNeumann_entropy = 0
@@ -123,7 +173,6 @@ contains
                     neg_ev = .true.
                 end if
             if (singular(ii) > 0.0_ap) then
-!                 diagonal(ii, ii) = cmplx(log(eigenval(ii)), 0.0_dp, dp)
                 diagonal(ii, ii) = cmplx(log(singular(ii)), 0.0_dp, dp)
             else 
                 diagonal(ii, ii) = (0.0_dp, 0.0_dp)
@@ -141,7 +190,7 @@ contains
         do ii = 1, nn  
                 vonNeumann_entropy = vonNeumann_entropy - real(diagonal(ii, ii), dp)
         end do
-!         write(*,*) vonNeumann_entropy
+
     end function vonNeumann_entropy
     
     function hamilton_exp(var, matrix) result(dev)
@@ -202,7 +251,7 @@ contains
         
         call write_vec_real("coeff.dat", coeff(:,1), horizontal=.true.)
         over = 10000_dp
-!         over = over**200
+
         do ii = 0, steps
              !! calculate odd potenz of matrix 1, 3, 5, ..
             potenz = (0.0_dp, 0.0_dp)
@@ -257,70 +306,8 @@ contains
         call write_matrix_complex("dev.dat", dev)
         call write_matrix_complex("udev.dat", matmul(dev,transpose(conjg(dev))))
     end function hamilton_exp
-    
-    !! not working
-    function matrix_exp(var, matrix) result(dev)
-        !! Declarations
-        complex(dp), intent(in) :: matrix(:,:), var
-        integer :: nn, ii
-        complex(dp), allocatable ::  dev(:,:), diagonal(:,:), left(:,:), right(:,:)
-        real(dp), allocatable ::  singular(:), eigenval(:), su(:)
-        nn = size(matrix, dim=1)
-        
-        !! not working, stop programm
-        write(*,*) "Fix Me: Subroutine matrix_exp in quantumWalk is not working, due different accuracy in LAPACK!"
-        stop
-        
-        
-        
-        allocate(left(nn,nn))
-        allocate(right(nn,nn))
-        allocate(singular(nn))
-        allocate(dev(nn,nn))
-        allocate(eigenval(nn))
-        allocate(diagonal(nn,nn))
-        allocate(su(nn))
-        dev = (0.0_dp, 0.0_dp)
-        eigenval = 0.0_dp
-        diagonal = (0.0_dp, 0.0_dp)
-        dev = matrix
-        
-!         call la_heev(dev, eigenval, "V", "U", info)
-!         call write_matrix_complex("hvec.dat", dev)
-!         call write_vec_real("heig.dat", eigenval)
-!         call write_matrix_complex("hunit.dat", matmul(dev, transpose(conjg(dev))))
-        
-        !! HEigensystem method
-!         call HEigensystem(nn, matrix, nn, eigenval, dev, nn, sort=-1)
-!         do ii = 1, nn
-!             diagonal(ii,ii) = exp(var*cmplx(eigenval(ii), 0.0_dp, dp))
-!         end do
-!         left = dev
-!         right = transpose(conjg(dev))
-        
-        ! LAPACK95 SDV method
-        dev = matrix
-!         call zgesvd_f95(A = dev, S= singular, U=left, VT=right, INFO=info)
 
-        do ii = 1, nn
-            diagonal(ii,ii) = exp(var*cmplx(singular(ii), 0.0_dp, dp))
-        end do
-!         do ii = 1, nn
-!             diagonal(ii,ii) = exp(var*cmplx(eigenval(ii), 0.0_dp, dp))
-!         end do
- 
-        dev = matmul(left, matmul(diagonal, right))
-        
-        !! Results to test
-        call write_matrix_complex("multleft.dat", matmul(left, transpose(conjg(left))))
-        call write_matrix_complex("multright.dat", matmul(right, transpose(conjg(right))))
-        call write_matrix_complex("left.dat", left)
-        call write_matrix_complex("right.dat", right)
-        call write_matrix_complex("ex.dat", dev)
-        call write_matrix_complex("multex.dat", matmul(dev, transpose(conjg(dev))))
-    end function matrix_exp
-    
-    
+
     !! Calculates the trace of a complex matrix
     !!
     !! /param matrix    matrix whose trace will be calculated
@@ -355,9 +342,6 @@ contains
         term = (0.0_dp, 0.0_dp)
         
         do ii = 1, n_env
-!             term =  term + 2*matmul(environment(:,:,ii), matmul(density_matrix, transpose(conjg(environment(:,:,ii))))) &
-!                     & - matmul(environment(:,:,ii), matmul(transpose(conjg(environment(:,:,ii))), density_matrix)) &
-!                     & - matmul(transpose(conjg(environment(:,:,ii))), matmul(environment(:,:,ii), density_matrix)) 
             term = term + matmul(environment(:,:,ii), matmul(density_matrix, transpose(conjg(environment(:,:,ii)))))
         end do
         
@@ -478,23 +462,76 @@ contains
         complex(dp) :: ex(6,6)
         complex(dp), parameter :: i = (0.0_dp, 1.0_dp)
 
-        ex = 1.0_dp/3 * transpose(reshape( (/  2*cos(var)+cos((2*var)) , i*(sin(var)+sin(((2*var)))) , &
-                    & i*(sin(var)+sin((2*var))) , cos((2*var))-cos(var) , &
-                    & cos((2*var))-cos(var) , -i*(2*sin(var)-sin((2*var))),&
-                  &  i *(sin(var)+sin((2*var))) , 2 *cos(var)+cos((2*var))  , &
-                    &  cos((2*var))-cos(var) , i* (sin(var)+sin((2*var))) , &
-                    & -i*(2* sin(var)-sin((2*var))) , cos((2*var))-cos(var), &
-                  &  i* (sin(var)+sin((2*var))) , cos((2*var))-cos(var)  , &
-                    &  2*cos(var)+cos((2*var)) , -i*(2*sin(var)-sin((2*var))) , &
-                    & i*(sin(var)+sin((2*var))) , cos((2*var))-cos(var) , &
-                  &   cos((2*var))-cos(var) , i*(sin(var)+sin((2*var))) , &
-                    & -i*(2*sin(var)-sin((2*var))) , 2*cos(var)+cos((2*var)) , &
-                    & cos((2*var))-cos(var) , i*(sin(var)+sin((2*var))) , &
-                  &   cos((2*var))-cos(var) , -i*(2*sin(var)-sin((2*var))) , &
-                    & i*(sin(var)+sin((2*var))) , cos((2*var))-cos(var) , &
-                    & 2*cos(var)+cos((2*var)) , i*(sin(var)+sin((2*var))) , &
-                  &   -i*(2*sin(var)-sin((2*var))) , cos((2*var))-cos(var) ,&
-                    & cos((2*var))-cos(var) , i*(sin(var)+sin((2*var))) , &
-                    & i*(sin(var)+sin((2*var))) , 2*cos(var)+cos((2*var)) /), [6,6] ))
+        ex = 1.0_dp/3 * transpose(reshape( (/  2.0_dp*cos(var)+cos((2.0_dp*var)) , i*(sin(var)+sin(((2.0_dp*var)))) , &
+                    & i*(sin(var)+sin((2.0_dp*var))) , cos((2.0_dp*var))-cos(var) , &
+                    & cos((2.0_dp*var))-cos(var) , -i*(2.0_dp*sin(var)-sin((2.0_dp*var))),&
+                  &  i *(sin(var)+sin((2.0_dp*var))) , 2.0_dp *cos(var)+cos((2.0_dp*var))  , &
+                    &  cos((2.0_dp*var))-cos(var) , i* (sin(var)+sin((2.0_dp*var))) , &
+                    & -i*(2.0_dp* sin(var)-sin((2.0_dp*var))) , cos((2.0_dp*var))-cos(var), &
+                  &  i* (sin(var)+sin((2.0_dp*var))) , cos((2.0_dp*var))-cos(var)  , &
+                    &  2.0_dp*cos(var)+cos((2.0_dp*var)) , -i*(2.0_dp*sin(var)-sin((2.0_dp*var))) , &
+                    & i*(sin(var)+sin((2.0_dp*var))) , cos((2.0_dp*var))-cos(var) , &
+                  &   cos((2.0_dp*var))-cos(var) , i*(sin(var)+sin((2.0_dp*var))) , &
+                    & -i*(2.0_dp*sin(var)-sin((2.0_dp*var))) , 2.0_dp*cos(var)+cos((2.0_dp*var)) , &
+                    & cos((2.0_dp*var))-cos(var) , i*(sin(var)+sin((2.0_dp*var))) , &
+                  &   cos((2.0_dp*var))-cos(var) , -i*(2.0_dp*sin(var)-sin((2.0_dp*var))) , &
+                    & i*(sin(var)+sin((2.0_dp*var))) , cos((2.0_dp*var))-cos(var) , &
+                    & 2.0_dp*cos(var)+cos((2.0_dp*var)) , i*(sin(var)+sin((2.0_dp*var))) , &
+                  &   -i*(2.0_dp*sin(var)-sin((2.0_dp*var))) , cos((2.0_dp*var))-cos(var) ,&
+                    & cos((2.0_dp*var))-cos(var) , i*(sin(var)+sin((2.0_dp*var))) , &
+                    & i*(sin(var)+sin((2.0_dp*var))) , 2.0_dp*cos(var)+cos((2.0_dp*var)) /), [6,6] ))
+        call write_matrix_complex("ex.dat", ex)            
+        call write_matrix_complex("uex.dat", matmul(ex, transpose(conjg(ex))))
      end function special_2
+     
+     function special_3(var) result(ex)
+        complex(dp), intent(in) :: var
+        complex(dp) :: ex(8,8)
+        real(dp) :: coeff(3), ws(8,8)
+        integer :: nn, ii
+        
+        nn = 8
+        
+        coeff = 1.0_dp
+        ws = 0.0_dp
+        do ii = 1, nn
+            ws(ii, ii) = 1.0_dp
+        end do
+        
+        do ii = 0, 100
+            ex = ex + (var**ii)/factorial(ii) *ws
+            
+            if (modulo(ii+1,2) == 0) then
+                
+            end if
+        end do
+    end function special_3
+    
+    function man_exp(matrix, var) result(ex)
+        complex(dp), intent(in) :: var
+        complex(dp), intent(in) :: matrix(:,:)
+        complex(dp), allocatable :: ex(:,:), ws(:,:)
+        integer :: nn, ii, jj
+        
+        nn = size(matrix, dim=1)
+        allocate(ex(nn,nn))
+        allocate(ws(nn,nn))
+        
+        ws = matrix
+        ex = (0.0_dp, 0.0_dp)
+
+        do ii = 0, 100
+            ws = (0.0_dp, 0.0_dp)
+            do jj = 1, nn
+                ws(jj,jj) = (1.0_dp, 0.0_dp)
+            end do
+            do jj = 1, ii
+                ws = matmul(ws, matrix)
+            end do
+            ex = ex + (var**ii)/factorial(ii) * ws
+        end do
+        
+        call write_matrix_complex("man.dat", ex)
+        call write_matrix_complex("uman.dat", matmul(ex, transpose(conjg(ex))))
+    end function man_exp
 end module quantumWalk

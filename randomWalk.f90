@@ -1,9 +1,40 @@
+!     Copyright 2014 Frank Stuckenberg
+!
+!     This file is part of walker.
+! 
+!     walker is free software: you can redistribute it and/or modify
+!     it under the terms of the GNU Affero General Public License as published by
+!     the Free Software Foundation, either version 3 of the License, or
+!     (at your option) any later version.
+! 
+!     walker is distributed in the hope that it will be useful,
+!     but WITHOUT ANY WARRANTY; without even the implied warranty of
+!     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!     GNU Affero General Public License for more details.
+! 
+!     You should have received a copy of the GNU Affero General Public License
+!     along with walker.  If not, see <http://www.gnu.org/licenses/>.
+! 
+!     Diese Datei ist Teil von walker.
+! 
+!     walker ist Freie Software: Sie können es unter den Bedingungen
+!     der GNU Affero General Public License, wie von der Free Software Foundation,
+!     Version 3 der Lizenz oder (nach Ihrer Wahl) jeder späteren
+!     veröffentlichten Version, weiterverbreiten und/oder modifizieren.
+! 
+!     walker wird in der Hoffnung, dass es nützlich sein wird, aber
+!     OHNE JEDE GEWÄHELEISTUNG, bereitgestellt; sogar ohne die implizite
+!     Gewährleistung der MARKTFÄHIGKEIT oder EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.
+!     Siehe die GNU Affero General Public License für weitere Details.
+! 
+!     Sie sollten eine Kopie der GNU Affero General Public License zusammen mit diesem
+!     Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
+
 !> Provides the routines for the classical random walk.
 !!
 module randomWalk
     use accuracy
     use io
-    use random
     implicit none
 
 contains
@@ -14,65 +45,38 @@ contains
     !! network.
     !!
     !! \param laplacian     Laplacian matrix containing information about the network.
-    !! \param vortex        Vector to contain the probability to be in each vortex. 
+    !! \param vertex        Vector to contain the probability to be in each vertex. 
     !! \param io_rates      Input/Output rates
     !! \param timestep      The size of a timestep.
     !! \param maxTimestep   The maximum amount of timesteps that will be simulated.
-    !! \param time_mode     The time mode of the simulation (either discrete or continous).
     !!
-    subroutine CRWalk(laplacian, vortex, io_rates, timestep, time_mode)
+    subroutine CRWalk(laplacian, vertex, io_rates, timestep)
 
         !! Declarations
         real(dp), intent(in) :: timestep, io_rates(:)
-        character(*), intent(in) :: time_mode
         real(dp), intent(inout) :: laplacian(:,:)
-        real(dp), intent(inout) :: vortex(:)
+        real(dp), intent(inout) :: vertex(:)
         integer :: n1
         real(dp), allocatable :: rate(:)
         n1 = size(laplacian, dim=1)
         
-        select case (time_mode)
-            case default !! Unknown Mode. End program.
-                write(*,*) "Error: Not known modus! Stop program."
-                stop
 
-            case ("discrete") !! discrete-time Random Walk mode
-                write(*,*) "Sorry discrete-time mode is broken! Stop program!"
-                stop
-!                 !! Transform laplacian in transition matrix
-!                 laplacian = laplacian * timestep
-!                 do ii = 1, n1
-!                     laplacian(ii,ii) = laplacian(ii,ii) + 1
-!                 end do
-!                 
-!                 !! Add Input/Output rates
-!                 do ii = 1, size(io_vertices)
-!                     laplacian(io_vertices(ii), io_vertices(ii)) = laplacian(io_vertices(ii), io_vertices(ii)) + io_rates(ii)*timestep
-!                 end do
-!                 
-!                 !! Lets walk        
-!                 vortex = matmul(laplacian,vortex)                    
-
-            case ("continous") !! continous-time Random Walk mode
-         
-            !! Calculate rate
-            allocate(rate(n1))
-            rate = matmul(laplacian,vortex)
-            
-            !! Lets walk
-            vortex = vortex - rate*timestep
-            
-            !! Add input/output rates
-            vortex(1) = vortex(1) + io_rates(1)*timestep
-            vortex(size(vortex)) = vortex(size(vortex)) + io_rates(2)*timestep
-            
-            if (minval(vortex) < 0) then
-!                 write(*,*) "Warning: Probability gets negative! I fix the issue but you may look for systematic errors."
-                where(vortex < 0)
-                    vortex = 0
-                end where
-            end if
-        end select
+        !! Calculate rate
+        allocate(rate(n1))
+        rate = matmul(laplacian,vertex)
+        
+        !! Lets walk
+        vertex = vertex - rate*timestep
+        
+        !! Add input/output rates
+        vertex(1) = vertex(1) + io_rates(1)*timestep
+        vertex(size(vertex)) = vertex(size(vertex)) + io_rates(2)*timestep
+           
+        if (minval(vertex) < 0) then
+            where(vertex < 0)
+                vertex = 0
+            end where
+        end if
 
     end subroutine CRWalk
     
@@ -84,7 +88,7 @@ contains
         real(dp), intent(in) :: vec(:)
         integer :: ii
         
-        calc_entropy = 0
+        calc_entropy = 0.0_dp
         do ii = 1, size(vec)
             if (vec(ii) /= 0) then
                 calc_entropy = calc_entropy - vec(ii)/sum(vec) * log(vec(ii)/sum(vec))
@@ -94,21 +98,21 @@ contains
     end function calc_entropy
     
     !> Calculates current
-    subroutine calc_current(current, laplacian, vortex, io_rates, distance)
-        real(dp), intent(in) :: laplacian(:,:), vortex(:), io_rates(2) 
+    subroutine calc_current(current, laplacian, vertex, io_rates, distance)
+        real(dp), intent(in) :: laplacian(:,:), vertex(:), io_rates(2) 
         integer, intent(in) :: distance(:)
         integer :: ii, jj
         real(dp), allocatable, intent(out) :: current(:)
 
         !! Calculates current from start to end
-        allocate(current(size(vortex)+1))
-        current = 0
+        allocate(current(size(vertex)+1))
+        current = 0.0_dp
         current(1) = io_rates(1)
-        do ii = 1, size(vortex)-1
-            do jj = 1, size(vortex)
-                if (laplacian(ii,jj) /= 0) then
+        do ii = 1, size(vertex)-1
+            do jj = 1, size(vertex)
+                if (laplacian(ii,jj) /= 0.0_dp) then
                     if (distance(jj) == distance(ii) + 1) then
-                        current(ii+1) = current(ii+1) + laplacian(jj,ii)*vortex(ii) - laplacian(ii,jj) * vortex(jj) 
+                        current(ii+1) = current(ii+1) + laplacian(jj,ii)*vertex(ii) - laplacian(ii,jj) * vertex(jj) 
                     end if
                 end if
             end do
@@ -117,21 +121,22 @@ contains
         
     end subroutine calc_current
     
-    subroutine calc_recurrent(recurrent, laplacian, vortex, io_rates, distance)
-        real(dp), intent(in) :: laplacian(:,:), vortex(:), io_rates(2) 
+    !> Calculates current from end to start (recurrent)
+    subroutine calc_recurrent(recurrent, laplacian, vertex, io_rates, distance)
+        real(dp), intent(in) :: laplacian(:,:), vertex(:), io_rates(2) 
         integer, intent(in) :: distance(:)
         integer :: ii, jj
         real(dp), allocatable, intent(out) :: recurrent(:)
         
         !! Calculates recurrent from end to start
-        allocate(recurrent(size(vortex)+1))
+        allocate(recurrent(size(vertex)+1))
         recurrent = 0
         recurrent(1) = -io_rates(1)
-        do ii = 2, size(vortex)
-            do jj = 1, size(vortex)
+        do ii = 2, size(vertex)
+            do jj = 1, size(vertex)
                 if (laplacian(ii,jj) /= 0) then
                     if (distance(jj) == distance(ii) - 1) then
-                        recurrent(ii) = recurrent(ii) + laplacian(jj,ii)*vortex(ii) - laplacian(ii,jj) * vortex(jj) 
+                        recurrent(ii) = recurrent(ii) + laplacian(jj,ii)*vertex(ii) - laplacian(ii,jj) * vertex(jj) 
                     end if
                 end if
             end do

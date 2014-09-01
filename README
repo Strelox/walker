@@ -1,0 +1,31 @@
+Walker
+README
+Copyright 2014 Frank Stuckenberg
+
+Important!
+This program was not build to be used by people other than me. The priority was to
+get good results not usability or security. You can use the software but I recommend to fully
+understand the sourcecode before using it. The documentation may not reflect the real sourcecode.
+I do not warrant for any damage or data loss that this software may do to your system.
+Use at your own risk!
+
+Installation
+    make
+        compiles the program
+    
+    make clean
+        deletes only .mod and .o files created through the compile process
+    
+    make realclean
+        as in make clean and addionally delets the executable
+
+Documentation
+    doxygen
+        creates a documentation folder
+        
+
+License
+walker is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.

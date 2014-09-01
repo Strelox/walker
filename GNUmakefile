@@ -1,3 +1,5 @@
+# Copyright 2014 Frank Stuckenberg
+
 # Compiler, compiler options, linker, linker options
 FC = gfortran
 FCOPTS = -std=f2003 -pedantic -Wall -fbounds-check -fall-intrinsics
@@ -13,7 +15,7 @@ BLAS_LIBDIR = /home/frank/lib/BLAS
 BLAS = blas
 
 # Object files
-OBJS = accuracy.o io.o config.o random.o randomWalk.o quantumWalk.o networks.o expokit.o diag.o walker.o
+OBJS = accuracy.o io.o config.o randomWalk.o quantumWalk.o networks.o walker.o
 
 
 walker: $(OBJS)
@@ -24,23 +26,17 @@ walker: $(OBJS)
 
 accuracy.o:
 
-expokit.o: accuracy.o 
-
-diag.o: accuracy.o 
-
 io.o: accuracy.o
 
 config.o: accuracy.o
 
-random.o:
+randomWalk.o: accuracy.o io.o
 
-randomWalk.o: accuracy.o io.o random.o
+quantumWalk.o: accuracy.o io.o
 
-quantumWalk.o: accuracy.o io.o random.o expokit.o diag.o
+networks.o: accuracy.o io.o
 
-networks.o: accuracy.o io.o random.o
-
-walker.o: accuracy.o io.o random.o
+walker.o: accuracy.o io.o
 
 
 # Clean directory
