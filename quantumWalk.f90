@@ -73,8 +73,8 @@ contains
 
         ! Environment Development
 
-        temp = p_env*matmul(identity, matmul(temp, identity)) &
-                        &+ (1-p_env)*environment_term(temp, environment)
+        temp = (1-p_env)*matmul(identity, matmul(temp, identity)) &
+                        &+ p_env*environment_term(temp, environment)
         
         identity = (temp - density_matrix)/timestep
 
