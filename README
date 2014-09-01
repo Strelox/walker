@@ -9,6 +9,10 @@ understand the sourcecode before using it. The documentation may not reflect the
 I do not warrant for any damage or data loss that this software may do to your system.
 Use at your own risk!
 
+Introduction
+This program simulates a random walk to describe the particle transition through a molecular wire. 
+The system can be either classical, pure quantum mechanical or a quantum system with interaction with the environment.
+
 Installation
     make
         compiles the program
@@ -23,6 +27,7 @@ Documentation
     doxygen
         creates a documentation folder
         
+You need LAPACK95 installed to compile the sourcecode.
 
 License
 walker is free software: you can redistribute it and/or modify
